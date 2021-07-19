@@ -7,8 +7,6 @@
 */
 
 #[macro_use]
-extern crate cmd_lib;
-#[macro_use]
 mod utils;
 mod key;
 mod wm;

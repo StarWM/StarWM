@@ -107,15 +107,11 @@ impl StarMan {
             }
             // Start application launcher on [Meta] + [T]
             (META, KeyCode::Char('t')) => {
-                std::thread::spawn(move || {
-                    run_cmd!(rofi -show run).unwrap();
-                });
+                cmd!("rofi -show run");
             }
             // Screenshot on [Meta] + [S]
             (META, KeyCode::Char('s')) => {
-                std::thread::spawn(move || {
-                    run_cmd!(maim --delay=0.1 > ~/pic/capture.png).unwrap();
-                });
+                cmd!("maim --delay=0.1 > ~/pic/capture.png");
             }
             _ => (),
         }
