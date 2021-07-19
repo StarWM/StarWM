@@ -31,7 +31,7 @@ Installation assumes you have an up to date Rust toolchain installed https://rus
 You will also need to have several X development libraries. They're usually under something like `libxcb-devel` and `libx11-devel`. Have a search in your package manager. There might be other libraries needed, but I'm not totally sure.
 
 ```sh
-git clone https://github.com/curlpipe/StarWM.git
+git clone https://github.com/StarWM/StarWM.git
 cd StarWM
 cargo build --release
 sudo cp target/release/starwm /usr/bin/starwm
