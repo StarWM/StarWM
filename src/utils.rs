@@ -12,11 +12,14 @@ macro_rules! st {
 // Helper macro for running commands
 #[macro_export]
 macro_rules! cmd {
-    ($cmd:expr) => {
+    ($cmd:expr) => {{
         std::thread::spawn(move || {
-            let _ = std::process::Command::new("sh").arg("-c").arg($cmd).status();
+            let _ = std::process::Command::new("sh")
+                .arg("-c")
+                .arg($cmd)
+                .status();
         });
-    };
+    }};
 }
 
 // Shorthand for an X events

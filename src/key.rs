@@ -18,11 +18,13 @@ pub const META_ALT_SHIFT: ModMask = META | ALT | SHIFT;
 */
 
 // Representation of all the keycodes
+#[derive(PartialEq, Eq, Hash)]
 pub enum KeyCode {
     Char(char),
 }
 
 // Representation of a key, with modifiers
+#[derive(PartialEq, Eq, Hash)]
 pub struct Key {
     pub code: KeyCode,
     pub mods: ModMask,
@@ -40,6 +42,12 @@ impl Key {
             code: KeyCode::Char(code.parse::<char>().ok()?),
             mods: xmod,
         })
+    }
+}
+
+impl Into<Key> for (ModMask, KeyCode) {
+    fn into(self) -> Key {
+        Key::new(self.0, self.1)
     }
 }
 

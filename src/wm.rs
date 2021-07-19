@@ -1,5 +1,6 @@
 // Wm.rs - This is where all the magic happens
-use crate::key::{get_lookup, Key, KeyCode, META, META_SHIFT};
+use crate::config::{Config, Handler};
+use crate::key::{get_lookup, Key, META};
 use crate::utils::{XEnterEvent, XKeyEvent, XLeaveEvent, XMapEvent};
 use std::collections::HashMap;
 use xcb::Connection;
@@ -7,6 +8,7 @@ use xcb::Connection;
 // Ignore the David Bowie reference, this is the struct that controls X
 pub struct StarMan {
     conn: Connection,
+    conf: Config,
     keymap: HashMap<u8, Vec<String>>,
     floating: Vec<u32>,
 }
@@ -42,6 +44,7 @@ impl StarMan {
         Self {
             keymap: get_lookup(&conn),
             floating: vec![],
+            conf: Config::new(),
             conn,
         }
     }
@@ -98,22 +101,14 @@ impl StarMan {
         }
     }
 
+    pub fn bind<K: Into<Key>>(&mut self, key: K, handler: Handler) {
+        self.conf.bind_handler(key.into(), handler);
+    }
+
     fn key_input(&mut self, key: Key) {
         // For handling key inputs
-        match (key.mods, key.code) {
-            // Exit on [Meta] + [Shift] + [Q]
-            (META_SHIFT, KeyCode::Char('q')) => {
-                std::process::exit(0);
-            }
-            // Start application launcher on [Meta] + [T]
-            (META, KeyCode::Char('t')) => {
-                cmd!("rofi -show run");
-            }
-            // Screenshot on [Meta] + [S]
-            (META, KeyCode::Char('s')) => {
-                cmd!("maim --delay=0.1 > ~/pic/capture.png");
-            }
-            _ => (),
+        if let Some(handler) = self.conf.key(key) {
+            handler();
         }
     }
 }
