@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://codesandbox.io">
+  <a href="#">
     <img src="media/banner.jpg" width="100%">
   </a>
 </p>
@@ -15,6 +15,8 @@
 
 # StarWM
 A basic X window manager in Rust.
+
+<img src="media/screenshot.png" width="100%">
 
 # Why?
 I was curious to see how practical Rust would be in critical userspace software, and I wanted to experiment with XCB for a long time. If you are a fellow Rustacean, and you'd like to have a crack at building your own window manager, feel free to go to the initial commit and work from there, or if you understand the code as a whole, feel free to take it for yourself and modify it to your liking, just be sure to keep it free and open source under the GPL3 license if you plan to redistribute your copy!
