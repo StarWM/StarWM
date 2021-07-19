@@ -1,5 +1,6 @@
 // Wm.rs - This is where all the magic happens
-use crate::key::{Key, XKeyEvent, get_lookup, KeyCode, META_SHIFT, META};
+use crate::key::{get_lookup, Key, KeyCode, META, META_SHIFT};
+use crate::utils::{XEnterEvent, XKeyEvent, XLeaveEvent, XMapEvent};
 use std::collections::HashMap;
 use xcb::Connection;
 
@@ -7,6 +8,7 @@ use xcb::Connection;
 pub struct StarMan {
     conn: Connection,
     keymap: HashMap<u8, Vec<String>>,
+    floating: Vec<u32>,
 }
 
 impl StarMan {
@@ -20,16 +22,26 @@ impl StarMan {
             &conn,
             false,
             screen.root(),
-            xcb::MOD_MASK_ANY as u16,
+            META as u16,
             xcb::GRAB_ANY as u8,
             xcb::GRAB_MODE_ASYNC as u8,
             xcb::GRAB_MODE_ASYNC as u8,
         );
+        // Establish a grab for notification events
+        xcb::change_window_attributes(
+            &conn,
+            screen.root(),
+            &[(
+                xcb::CW_EVENT_MASK,
+                xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY as u32,
+            )],
+        );
         // Write buffer to server
         conn.flush();
         // Instantiate and return
-        Self { 
+        Self {
             keymap: get_lookup(&conn),
+            floating: vec![],
             conn,
         }
     }
@@ -40,6 +52,33 @@ impl StarMan {
             // Wait for event
             let event = self.conn.wait_for_event().unwrap();
             match event.response_type() {
+                // On Window map (show event)
+                xcb::MAP_NOTIFY => {
+                    // Retrieve window
+                    let map_notify: XMapEvent = unsafe { xcb::cast_event(&event) };
+                    let window = map_notify.window();
+                    // Push to floating windows
+                    self.floating.push(window);
+                    // Ensure the window recieves events
+                    xcb::change_window_attributes(
+                        &self.conn,
+                        window,
+                        &[(
+                            xcb::CW_EVENT_MASK,
+                            xcb::EVENT_MASK_ENTER_WINDOW | xcb::EVENT_MASK_LEAVE_WINDOW,
+                        )],
+                    );
+                }
+                // On Window mouse enter
+                xcb::ENTER_NOTIFY => {
+                    let enter_notify: XEnterEvent = unsafe { xcb::cast_event(&event) };
+                    let window = enter_notify.event();
+                    xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
+                }
+                // On Window mouse leave
+                xcb::LEAVE_NOTIFY => {
+                    let leave_notify: XLeaveEvent = unsafe { xcb::cast_event(&event) };
+                }
                 // On Keypress
                 xcb::KEY_PRESS => {
                     // Retrieve key code
@@ -66,16 +105,16 @@ impl StarMan {
             (META_SHIFT, KeyCode::Char('q')) => {
                 std::process::exit(0);
             }
-            // Start terminal on [Meta] + [T]
+            // Start application launcher on [Meta] + [T]
             (META, KeyCode::Char('t')) => {
                 std::thread::spawn(move || {
-                    run_cmd!(alacritty).unwrap();
+                    run_cmd!(rofi -show run).unwrap();
                 });
             }
             // Screenshot on [Meta] + [S]
             (META, KeyCode::Char('s')) => {
                 std::thread::spawn(move || {
-                    run_cmd!(maim --delay=0.1 > /home/luke/pic/capture.png).unwrap();
+                    run_cmd!(maim --delay=0.1 > ~/pic/capture.png).unwrap();
                 });
             }
             _ => (),

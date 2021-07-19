@@ -3,15 +3,9 @@ use std::collections::HashMap;
 use std::ffi::CStr;
 use xcb::get_keyboard_mapping;
 pub use xcb::{
-    MOD_MASK_1 as ALT, 
-    MOD_MASK_4 as META, 
-    MOD_MASK_CONTROL as CONTROL, 
+    ModMask, MOD_MASK_1 as ALT, MOD_MASK_4 as META, MOD_MASK_CONTROL as CONTROL,
     MOD_MASK_SHIFT as SHIFT,
-    ModMask,
 };
-
-// Shorthand for an X key press event
-pub type XKeyEvent<'a> = &'a xcb::KeyPressEvent;
 
 // Common combinations
 pub const META_SHIFT: ModMask = META | SHIFT;

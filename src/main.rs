@@ -2,7 +2,7 @@
     StarWM is an attempt at a window manager.
     It's written in Rust for stability and speed.
     It was written to be manually edited, if need be.
-    The code is commented throughout, 
+    The code is commented throughout,
     feel free to modify it if you dislike any part of StarWM.
 */
 
