@@ -1,9 +1,14 @@
 // Wm.rs - This is where all the magic happens
 use crate::config::{Config, Handler};
 use crate::key::{get_lookup, Key, META};
-use crate::utils::{XEnterEvent, XKeyEvent, XLeaveEvent, XMapEvent};
 use std::collections::HashMap;
 use xcb::Connection;
+
+// Shorthand for an X events
+pub type XMapEvent<'a> = &'a xcb::MapNotifyEvent;
+pub type XKeyEvent<'a> = &'a xcb::KeyPressEvent;
+pub type XEnterEvent<'a> = &'a xcb::EnterNotifyEvent;
+pub type XLeaveEvent<'a> = &'a xcb::LeaveNotifyEvent;
 
 // Ignore the David Bowie reference, this is the struct that controls X
 pub struct StarMan {
