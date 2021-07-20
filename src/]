@@ -4,7 +4,7 @@ use std::ffi::CStr;
 use xcb::get_keyboard_mapping;
 pub use xcb::{
     ModMask, MOD_MASK_1 as ALT, MOD_MASK_4 as META, MOD_MASK_CONTROL as CONTROL,
-    MOD_MASK_SHIFT as SHIFT, NONE,
+    MOD_MASK_SHIFT as SHIFT,
 };
 
 // Common combinations
@@ -17,40 +17,96 @@ pub const META_ALT: ModMask = META | ALT;
 pub const META_ALT_SHIFT: ModMask = META | ALT | SHIFT;
 */
 
+// Representation of all the keycodes
+#[derive(PartialEq, Eq, Hash)]
+pub enum KeyCode {
+    Char(char),
+    F(u8),
+    Space,
+    Return,
+    BackSpace,
+    Esc,
+    Delete,
+    Insert,
+    PageUp,
+    PageDown,
+    Home,
+    End,
+    Tab,
+    Up,
+    Down,
+    Left,
+    Right,
+    Unknown,
+}
+
 // Representation of a key, with modifiers
 #[derive(PartialEq, Eq, Hash)]
 pub struct Key {
-    pub code: String,
+    pub code: KeyCode,
     pub mods: ModMask,
 }
 
 impl Key {
-    pub fn new(mods: ModMask, code: &str) -> Self {
+    pub fn new(mods: ModMask, code: KeyCode) -> Self {
+        // Create a new key, from arguments
+        Self { mods, code }
+    }
+
+    pub fn from_x(mods: ModMask, code: &str) -> Option<Self> {
         // Create a new key, from X key input data
-        Self {
-            code: st!(code),
-            mods,
-        }
-    }
-
-    pub fn xcode(&self, table: &HashMap<u8, Vec<String>>) -> Vec<u8> {
-        let mut result = vec![];
-        for (k, v) in table {
-            if v.contains(&self.code) {
-                result.push(*k);
+        let code = match code {
+            // Match X key names to the KeyCode enum
+            "space" => KeyCode::Space,
+            "Return" => KeyCode::Return,
+            "BackSpace" => KeyCode::BackSpace,
+            "Escape" => KeyCode::Esc,
+            "Delete" => KeyCode::Delete,
+            "Insert" => KeyCode::Insert,
+            "Prior" => KeyCode::PageUp,
+            "Next" => KeyCode::PageDown,
+            "Home" => KeyCode::Home,
+            "End" => KeyCode::End,
+            "Tab" => KeyCode::Tab,
+            "Up" => KeyCode::Up,
+            "Down" => KeyCode::Down,
+            "Left" => KeyCode::Left,
+            "Right" => KeyCode::Right,
+            "F1" => KeyCode::F(1),
+            "F2" => KeyCode::F(2),
+            "F3" => KeyCode::F(3),
+            "F4" => KeyCode::F(4),
+            "F5" => KeyCode::F(5),
+            "F6" => KeyCode::F(6),
+            "F7" => KeyCode::F(7),
+            "F8" => KeyCode::F(8),
+            "F9" => KeyCode::F(9),
+            "F10" => KeyCode::F(10),
+            "F11" => KeyCode::F(11),
+            "F12" => KeyCode::F(12),
+            "F13" => KeyCode::F(13),
+            "F14" => KeyCode::F(14),
+            "F15" => KeyCode::F(15),
+            "F16" => KeyCode::F(16),
+            "F17" => KeyCode::F(17),
+            "F18" => KeyCode::F(18),
+            "F19" => KeyCode::F(19),
+            "F20" => KeyCode::F(20),
+            code => {
+                if let Ok(ch) = code.parse::<char>() {
+                    // It's a character
+                    KeyCode::Char(ch)
+                } else {
+                    // Unknown key name
+                    KeyCode::Unknown
+                }
             }
-        }
-        result
+        };
+        Some(Self { code, mods })
     }
 }
 
-impl Into<Key> for (ModMask, String) {
-    fn into(self) -> Key {
-        Key::new(self.0, &self.1)
-    }
-}
-
-impl Into<Key> for (ModMask, &str) {
+impl Into<Key> for (ModMask, KeyCode) {
     fn into(self) -> Key {
         Key::new(self.0, self.1)
     }

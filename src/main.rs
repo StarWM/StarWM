@@ -12,21 +12,27 @@ mod utils;
 mod key;
 mod wm;
 
-use key::{KeyCode, META, META_SHIFT};
+use key::{META, META_SHIFT, NONE};
 use wm::StarMan;
 
 const ROFI: &str = "rofi -show run";
+const ALACRITTY: &str = "alacritty";
 const MAIM: &str = "maim --delay=0.1 > ~/pic/capture.png";
 
 fn main() {
     // Initialise and run StarWM
     let mut starman = StarMan::new();
-    // Exit on [Meta] + [Shift] + [Q]
-    starman.bind((META_SHIFT, KeyCode::Char('q')), || std::process::exit(0));
-    // Start application launcher on [Meta] + [T]
-    starman.bind((META, KeyCode::Char('t')), || cmd!(ROFI));
+    // Exit on [Meta] + [Shift] + [BackSpace]
+    starman.bind((META_SHIFT, "BackSpace"), || std::process::exit(0));
+    // Start application launcher on [Meta] + [Space]
+    starman.bind((META, "space"), || cmd!(ROFI));
+    // Start terminal on [Meta] + [Return]
+    starman.bind((META, "Return"), || cmd!(ALACRITTY));
     // Screenshot on [Meta] + [S]
-    starman.bind((META, KeyCode::Char('s')), || cmd!(MAIM));
+    starman.bind((META, "s"), || cmd!(MAIM));
+    // ..
+    starman.bind((META_SHIFT, "3"), || cmd!("kitty"));
+    starman.bind((NONE, "XF86Search"), || cmd!("kitty"));
     // Run the window manager
     starman.run();
 }
