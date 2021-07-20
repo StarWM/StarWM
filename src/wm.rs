@@ -6,6 +6,7 @@ use xcb::Connection;
 
 // Shorthand for an X events
 pub type XMapEvent<'a> = &'a xcb::MapNotifyEvent;
+pub type XDestroyEvent<'a> = &'a xcb::DestroyNotifyEvent;
 pub type XKeyEvent<'a> = &'a xcb::KeyPressEvent;
 pub type XEnterEvent<'a> = &'a xcb::EnterNotifyEvent;
 pub type XLeaveEvent<'a> = &'a xcb::LeaveNotifyEvent;
@@ -69,6 +70,12 @@ impl StarMan {
                     // Focus on this window
                     xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
                 }
+                // On Window destroy
+                xcb::DESTROY_NOTIFY => {
+                    let destroy_notify: XDestroyEvent = unsafe { xcb::cast_event(&event) };
+                    let window = destroy_notify.window();
+                    self.floating.retain(|&w| w != window);
+                }
                 // On Window mouse enter
                 xcb::ENTER_NOTIFY => {
                     let enter_notify: XEnterEvent = unsafe { xcb::cast_event(&event) };
@@ -117,10 +124,26 @@ impl StarMan {
         self.conf.bind_handler(key, handler);
     }
 
+    pub fn destroy(&mut self, idx: usize) {
+        // Send a destroy event
+        let window = self.floating[idx];
+        let protocols = xcb::intern_atom(&self.conn, false, "WM_PROTOCOLS")
+            .get_reply()
+            .unwrap()
+            .atom();
+        let delete = xcb::intern_atom(&self.conn, false, "WM_DELETE_WINDOW")
+            .get_reply()
+            .unwrap()
+            .atom();
+        let data = xcb::ClientMessageData::from_data32([delete, xcb::CURRENT_TIME, 0, 0, 0]);
+        let event = xcb::ClientMessageEvent::new(32, window, protocols, data);
+        xcb::send_event(&self.conn, false, window, xcb::EVENT_MASK_NO_EVENT, &event);
+    }
+
     fn key_input(&mut self, key: Key) {
         // For handling key inputs
         if let Some(handler) = self.conf.key(key) {
-            handler();
+            handler(self);
         }
     }
 }

@@ -23,16 +23,17 @@ fn main() {
     // Initialise and run StarWM
     let mut starman = StarMan::new();
     // Exit on [Meta] + [Shift] + [BackSpace]
-    starman.bind((META_SHIFT, "BackSpace"), || std::process::exit(0));
+    starman.bind((META_SHIFT, "BackSpace"), |_| std::process::exit(0));
     // Start application launcher on [Meta] + [Space]
-    starman.bind((META, "space"), || cmd!(ROFI));
+    starman.bind((META, "space"), |_| cmd!(ROFI));
     // Start terminal on [Meta] + [Return]
-    starman.bind((META, "Return"), || cmd!(ALACRITTY));
+    starman.bind((META, "Return"), |_| cmd!(ALACRITTY));
     // Screenshot on [Meta] + [S]
-    starman.bind((META, "s"), || cmd!(MAIM));
-    // ..
-    starman.bind((META_SHIFT, "3"), || cmd!("kitty"));
-    starman.bind((NONE, "XF86Search"), || cmd!("kitty"));
+    starman.bind((META, "s"), |_| cmd!(MAIM));
+    // Close window on [Meta] + [Q]
+    starman.bind((META, "q"), |wm| wm.destroy(0));
+    // Open rofi on search key
+    starman.bind((NONE, "XF86Search"), |_| cmd!(ROFI));
     // Run the window manager
     starman.run();
 }
