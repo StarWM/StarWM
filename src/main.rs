@@ -17,7 +17,7 @@ use wm::StarMan;
 
 const ROFI: &str = "rofi -show run";
 const ALACRITTY: &str = "alacritty";
-const MAIM: &str = "maim --delay=0.1 > ~/pic/capture.png";
+const MAIM: &str = "maim -suB --delay=0.1 | xclip -selection clipboard -t image/png";
 
 fn main() {
     // Initialise and run StarWM

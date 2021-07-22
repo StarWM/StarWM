@@ -2,7 +2,7 @@
 use crate::config::{Config, Handler};
 use crate::key::{get_lookup, Key};
 use std::collections::HashMap;
-use xcb::Connection;
+use xcb::{ffi, Connection, Event, Reply};
 
 // Shorthand for an X events
 pub type XMapEvent<'a> = &'a xcb::MapNotifyEvent;
@@ -11,7 +11,7 @@ pub type XKeyEvent<'a> = &'a xcb::KeyPressEvent;
 pub type XEnterEvent<'a> = &'a xcb::EnterNotifyEvent;
 pub type XLeaveEvent<'a> = &'a xcb::LeaveNotifyEvent;
 pub type XButtonPressEvent<'a> = &'a xcb::ButtonPressEvent;
-pub type XButtonReleaseEvent<'a> = &'a xcb::ButtonReleaseEvent;
+pub type XMotionEvent<'a> = &'a xcb::MotionNotifyEvent;
 
 // Mouse move event struct
 #[derive(Default)]
@@ -20,15 +20,39 @@ pub struct MouseInfo {
     root_y: i16,
     child: u32,
     detail: u8,
+    geo: Option<(u32, u32, u32, u32)>,
 }
 
 impl MouseInfo {
-    pub fn new(event: &xcb::Event<xcb::ffi::xcb_button_press_event_t>) -> Self {
+    pub fn new(
+        event: &Event<ffi::xcb_button_press_event_t>,
+        geo: Option<Reply<ffi::xcb_get_geometry_reply_t>>,
+    ) -> Self {
         Self {
             root_x: event.root_x(),
             root_y: event.root_y(),
             child: event.child(),
             detail: event.detail(),
+            geo: if let Some(geo) = geo {
+                Some((
+                    geo.x() as u32,
+                    geo.y() as u32,
+                    geo.width() as u32,
+                    geo.height() as u32,
+                ))
+            } else {
+                None
+            },
+        }
+    }
+
+    pub fn motion(event: &Event<ffi::xcb_motion_notify_event_t>) -> Self {
+        Self {
+            root_x: event.root_x(),
+            root_y: event.root_y(),
+            child: event.child(),
+            detail: event.detail(),
+            geo: None,
         }
     }
 }
@@ -71,23 +95,22 @@ impl StarMan {
                 xcb::MOD_MASK_4 as u16,
             );
         }
-        // Establish a grab for notification events & change mouse cursor
+        // Set root cursor
         let font = conn.generate_id();
         xcb::open_font(&conn, font, "cursor");
         let cursor = conn.generate_id();
         xcb::create_glyph_cursor(
             &conn, cursor, font, font, 68, 69, 0, 0, 0, 0xffff, 0xffff, 0xffff,
         );
+        xcb::change_window_attributes(&conn, screen.root(), &[(xcb::CW_CURSOR, cursor)]);
+        // Establish a grab for notification events
         xcb::change_window_attributes(
             &conn,
             screen.root(),
-            &[
-                (
-                    xcb::CW_EVENT_MASK,
-                    xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY as u32,
-                ),
-                (xcb::CW_CURSOR, cursor),
-            ],
+            &[(
+                xcb::CW_EVENT_MASK,
+                xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY as u32,
+            )],
         );
         // Write buffer to server
         conn.flush();
@@ -145,31 +168,43 @@ impl StarMan {
                 // On mouse press
                 xcb::BUTTON_PRESS => {
                     let button_press: XButtonPressEvent = unsafe { xcb::cast_event(&event) };
-                    self.mouse = Some(MouseInfo::new(button_press));
+                    let geo = xcb::get_geometry(&self.conn, button_press.child())
+                        .get_reply()
+                        .ok();
+                    self.mouse = Some(MouseInfo::new(button_press, geo));
+                }
+                // On mouse movement
+                xcb::MOTION_NOTIFY => {
+                    // Get the start and end of the mouse event
+                    let motion_event: XMotionEvent = unsafe { xcb::cast_event(&event) };
+                    if let Some(start) = self.mouse.as_ref() {
+                        let end = MouseInfo::motion(motion_event);
+                        // Calculate deltas
+                        let delta_x = end.root_x - start.root_x;
+                        let delta_y = end.root_y - start.root_y;
+                        if delta_x == 0 && delta_y == 0 {
+                            // Exit if only a click
+                            continue;
+                        } else if start.detail == 1 {
+                            // Move window if drag was performed
+                            if let Some(geo) = start.geo {
+                                let x = geo.0 as i16 + delta_x;
+                                let y = geo.1 as i16 + delta_y;
+                                xcb::configure_window(
+                                    &self.conn,
+                                    start.child,
+                                    &[
+                                        (xcb::CONFIG_WINDOW_X as u16, x as u32),
+                                        (xcb::CONFIG_WINDOW_Y as u16, y as u32),
+                                    ],
+                                );
+                            }
+                        }
+                    }
                 }
                 // On mouse release
                 xcb::BUTTON_RELEASE => {
-                    // Get the start and end of the mouse event
-                    let button_release: XButtonReleaseEvent = unsafe { xcb::cast_event(&event) };
-                    let start = self.mouse.as_ref().unwrap();
-                    let end = MouseInfo::new(button_release);
-                    // Calculate deltas
-                    let delta_x = end.root_x - start.root_x;
-                    let delta_y = end.root_y - start.root_y;
-                    if delta_x == 0 && delta_y == 0 {
-                        // Exit if only a click
-                        return;
-                    } else {
-                        // Move window if drag was performed
-                        xcb::configure_window(
-                            &self.conn,
-                            start.child,
-                            &[
-                                (xcb::CONFIG_WINDOW_X as u16, end.root_x as u32),
-                                (xcb::CONFIG_WINDOW_Y as u16, end.root_y as u32),
-                            ],
-                        );
-                    }
+                    self.mouse = None;
                 }
                 // On Keypress
                 xcb::KEY_PRESS => {
