@@ -10,6 +10,28 @@ pub type XDestroyEvent<'a> = &'a xcb::DestroyNotifyEvent;
 pub type XKeyEvent<'a> = &'a xcb::KeyPressEvent;
 pub type XEnterEvent<'a> = &'a xcb::EnterNotifyEvent;
 pub type XLeaveEvent<'a> = &'a xcb::LeaveNotifyEvent;
+pub type XButtonPressEvent<'a> = &'a xcb::ButtonPressEvent;
+pub type XButtonReleaseEvent<'a> = &'a xcb::ButtonReleaseEvent;
+
+// Mouse move event struct
+#[derive(Default)]
+pub struct MouseInfo {
+    root_x: i16,
+    root_y: i16,
+    child: u32,
+    detail: u8,
+}
+
+impl MouseInfo {
+    pub fn new(event: &xcb::Event<xcb::ffi::xcb_button_press_event_t>) -> Self {
+        Self {
+            root_x: event.root_x(),
+            root_y: event.root_y(),
+            child: event.child(),
+            detail: event.detail(),
+        }
+    }
+}
 
 // Ignore the David Bowie reference, this is the struct that controls X
 pub struct StarMan {
@@ -17,6 +39,7 @@ pub struct StarMan {
     conf: Config,
     keymap: HashMap<u8, Vec<String>>,
     floating: Vec<u32>,
+    mouse: Option<MouseInfo>,
 }
 
 impl StarMan {
@@ -25,14 +48,46 @@ impl StarMan {
         let (conn, _) = Connection::connect(None).expect("Failed to connect to X");
         let setup = conn.get_setup();
         let screen = setup.roots().nth(0).unwrap();
-        // Establish a grab for notification events
+        // Create cursor
+        // Establish a grab for mouse events
+        xcb::randr::select_input(
+            &conn,
+            screen.root(),
+            xcb::randr::NOTIFY_MASK_CRTC_CHANGE as u16,
+        );
+        for button in [0, 3] {
+            xcb::grab_button(
+                &conn,
+                false,
+                screen.root(),
+                (xcb::EVENT_MASK_BUTTON_PRESS
+                    | xcb::EVENT_MASK_BUTTON_RELEASE
+                    | xcb::EVENT_MASK_POINTER_MOTION) as u16,
+                xcb::GRAB_MODE_ASYNC as u8,
+                xcb::GRAB_MODE_ASYNC as u8,
+                xcb::NONE,
+                xcb::NONE,
+                button,
+                xcb::MOD_MASK_4 as u16,
+            );
+        }
+        // Establish a grab for notification events & change mouse cursor
+        let font = conn.generate_id();
+        xcb::open_font(&conn, font, "cursor");
+        let cursor = conn.generate_id();
+        xcb::create_glyph_cursor(
+            &conn, cursor, font, font, 68, 69, 0, 0, 0, 0xffff, 0xffff, 0xffff,
+        );
         xcb::change_window_attributes(
             &conn,
             screen.root(),
-            &[(
-                xcb::CW_EVENT_MASK,
-                xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY as u32,
-            )],
+            &[
+                (
+                    xcb::CW_EVENT_MASK,
+                    xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY as u32,
+                ),
+                (xcb::CW_CURSOR, cursor),
+            ],
         );
         // Write buffer to server
         conn.flush();
@@ -42,6 +97,7 @@ impl StarMan {
             floating: vec![],
             conf: Config::new(),
             conn,
+            mouse: None,
         }
     }
 
@@ -84,7 +140,36 @@ impl StarMan {
                 }
                 // On Window mouse leave
                 xcb::LEAVE_NOTIFY => {
-                    let leave_notify: XLeaveEvent = unsafe { xcb::cast_event(&event) };
+                    let _: XLeaveEvent = unsafe { xcb::cast_event(&event) };
+                }
+                // On mouse press
+                xcb::BUTTON_PRESS => {
+                    let button_press: XButtonPressEvent = unsafe { xcb::cast_event(&event) };
+                    self.mouse = Some(MouseInfo::new(button_press));
+                }
+                // On mouse release
+                xcb::BUTTON_RELEASE => {
+                    // Get the start and end of the mouse event
+                    let button_release: XButtonReleaseEvent = unsafe { xcb::cast_event(&event) };
+                    let start = self.mouse.as_ref().unwrap();
+                    let end = MouseInfo::new(button_release);
+                    // Calculate deltas
+                    let delta_x = end.root_x - start.root_x;
+                    let delta_y = end.root_y - start.root_y;
+                    if delta_x == 0 && delta_y == 0 {
+                        // Exit if only a click
+                        return;
+                    } else {
+                        // Move window if drag was performed
+                        xcb::configure_window(
+                            &self.conn,
+                            start.child,
+                            &[
+                                (xcb::CONFIG_WINDOW_X as u16, end.root_x as u32),
+                                (xcb::CONFIG_WINDOW_Y as u16, end.root_y as u32),
+                            ],
+                        );
+                    }
                 }
                 // On Keypress
                 xcb::KEY_PRESS => {
