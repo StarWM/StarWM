@@ -28,6 +28,7 @@ impl MouseInfo {
         event: &Event<ffi::xcb_button_press_event_t>,
         geo: Option<Reply<ffi::xcb_get_geometry_reply_t>>,
     ) -> Self {
+        // Take in a mouse press event, and convert into a friendly struct
         Self {
             root_x: event.root_x(),
             root_y: event.root_y(),
@@ -47,6 +48,7 @@ impl MouseInfo {
     }
 
     pub fn motion(event: &Event<ffi::xcb_motion_notify_event_t>) -> Self {
+        // Take in a mouse movement event, and convert to a friendly struct
         Self {
             root_x: event.root_x(),
             root_y: event.root_y(),
@@ -73,7 +75,6 @@ impl StarMan {
         let (conn, _) = Connection::connect(None).expect("Failed to connect to X");
         let setup = conn.get_setup();
         let screen = setup.roots().nth(0).unwrap();
-        // Create cursor
         // Establish a grab for mouse events
         xcb::randr::select_input(
             &conn,
@@ -132,14 +133,14 @@ impl StarMan {
             // Wait for event
             let event = self.conn.wait_for_event().unwrap();
             match event.response_type() {
-                // On Window map (show event)
+                // On window map (window appears)
                 xcb::MAP_NOTIFY => {
                     // Retrieve window
                     let map_notify: XMapEvent = unsafe { xcb::cast_event(&event) };
                     let window = map_notify.window();
                     // Push to floating windows
                     self.floating.push(window);
-                    // Ensure the window recieves events
+                    // Grab the events where the cursor leaves and enters the window
                     xcb::change_window_attributes(
                         &self.conn,
                         window,
@@ -152,11 +153,12 @@ impl StarMan {
                     xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
                     self.focus = self.floating.len().saturating_sub(1);
                 }
-                // On Window destroy
+                // On window destroy (window closes)
                 xcb::DESTROY_NOTIFY => {
                     let destroy_notify: XDestroyEvent = unsafe { xcb::cast_event(&event) };
                     let window = destroy_notify.window();
                     self.floating.retain(|&w| w != window);
+                    // Fix focus if need be
                     if self.focus >= self.floating.len() {
                         self.focus = self.floating.len().saturating_sub(1);
                     }
@@ -164,18 +166,18 @@ impl StarMan {
                         xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, target, 0);
                     }
                 }
-                // On Window mouse enter
+                // On mouse entering a window
                 xcb::ENTER_NOTIFY => {
                     let enter_notify: XEnterEvent = unsafe { xcb::cast_event(&event) };
                     let window = enter_notify.event();
                     xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
                     self.focus = self.floating.iter().position(|w| w == &window).unwrap();
                 }
-                // On Window mouse leave
+                // On mouse leaving a window
                 xcb::LEAVE_NOTIFY => {
                     let _: XLeaveEvent = unsafe { xcb::cast_event(&event) };
                 }
-                // On mouse press
+                // On mouse button press
                 xcb::BUTTON_PRESS => {
                     let button_press: XButtonPressEvent = unsafe { xcb::cast_event(&event) };
                     let geo = xcb::get_geometry(&self.conn, button_press.child())
@@ -196,7 +198,7 @@ impl StarMan {
                             // Exit if only a click
                             continue;
                         } else if start.detail == 1 {
-                            // Move window if drag was performed
+                            // Move window if drag was performed (with the left mouse button)
                             if let Some(geo) = start.geo {
                                 let x = geo.0 as i16 + delta_x;
                                 let y = geo.1 as i16 + delta_y;
@@ -212,11 +214,11 @@ impl StarMan {
                         }
                     }
                 }
-                // On mouse release
+                // On mouse button release
                 xcb::BUTTON_RELEASE => {
                     self.mouse = None;
                 }
-                // On Keypress
+                // On key press
                 xcb::KEY_PRESS => {
                     // Retrieve key code
                     let key_press: XKeyEvent = unsafe { xcb::cast_event(&event) };
@@ -271,6 +273,7 @@ impl StarMan {
     }
 
     pub fn destroy_focus(&mut self) {
+        // Destroy the window that is currently focussed on
         if let Some(&target) = self.floating.get(self.focus) {
             self.destroy(target);
         }

@@ -34,6 +34,7 @@ impl Key {
     }
 
     pub fn xcode(&self, table: &HashMap<u8, Vec<String>>) -> Vec<u8> {
+        // This gives out the X code for the key
         let mut result = vec![];
         for (k, v) in table {
             if v.contains(&self.code) {
@@ -44,12 +45,14 @@ impl Key {
     }
 }
 
+// Helpful into trait for short arguments
 impl Into<Key> for (ModMask, String) {
     fn into(self) -> Key {
         Key::new(self.0, &self.1)
     }
 }
 
+// Helpful into trait for short arguments
 impl Into<Key> for (ModMask, &str) {
     fn into(self) -> Key {
         Key::new(self.0, self.1)

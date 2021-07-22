@@ -15,6 +15,7 @@ mod wm;
 use key::{META, META_SHIFT, NONE};
 use wm::StarMan;
 
+// List of commands to run within the WM
 const ROFI: &str = "rofi -show run";
 const ALACRITTY: &str = "alacritty";
 const MAIM: &str = "maim -suB --delay=0.1 | xclip -selection clipboard -t image/png";
