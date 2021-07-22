@@ -63,6 +63,7 @@ pub struct StarMan {
     conf: Config,
     keymap: HashMap<u8, Vec<String>>,
     floating: Vec<u32>,
+    focus: usize,
     mouse: Option<MouseInfo>,
 }
 
@@ -121,6 +122,7 @@ impl StarMan {
             conf: Config::new(),
             conn,
             mouse: None,
+            focus: 0,
         }
     }
 
@@ -148,18 +150,26 @@ impl StarMan {
                     );
                     // Focus on this window
                     xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
+                    self.focus = self.floating.len().saturating_sub(1);
                 }
                 // On Window destroy
                 xcb::DESTROY_NOTIFY => {
                     let destroy_notify: XDestroyEvent = unsafe { xcb::cast_event(&event) };
                     let window = destroy_notify.window();
                     self.floating.retain(|&w| w != window);
+                    if self.focus >= self.floating.len() {
+                        self.focus = self.floating.len().saturating_sub(1);
+                    }
+                    if let Some(&target) = self.floating.get(self.focus) {
+                        xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, target, 0);
+                    }
                 }
                 // On Window mouse enter
                 xcb::ENTER_NOTIFY => {
                     let enter_notify: XEnterEvent = unsafe { xcb::cast_event(&event) };
                     let window = enter_notify.event();
                     xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
+                    self.focus = self.floating.iter().position(|w| w == &window).unwrap();
                 }
                 // On Window mouse leave
                 xcb::LEAVE_NOTIFY => {
@@ -244,9 +254,8 @@ impl StarMan {
         self.conf.bind_handler(key, handler);
     }
 
-    pub fn destroy(&mut self, idx: usize) {
-        // Send a destroy event
-        let window = self.floating[idx];
+    pub fn destroy(&mut self, target: u32) {
+        // Set up a destroy event
         let protocols = xcb::intern_atom(&self.conn, false, "WM_PROTOCOLS")
             .get_reply()
             .unwrap()
@@ -256,8 +265,15 @@ impl StarMan {
             .unwrap()
             .atom();
         let data = xcb::ClientMessageData::from_data32([delete, xcb::CURRENT_TIME, 0, 0, 0]);
-        let event = xcb::ClientMessageEvent::new(32, window, protocols, data);
-        xcb::send_event(&self.conn, false, window, xcb::EVENT_MASK_NO_EVENT, &event);
+        let event = xcb::ClientMessageEvent::new(32, target, protocols, data);
+        // Send the event
+        xcb::send_event(&self.conn, false, target, xcb::EVENT_MASK_NO_EVENT, &event);
+    }
+
+    pub fn destroy_focus(&mut self) {
+        if let Some(&target) = self.floating.get(self.focus) {
+            self.destroy(target);
+        }
     }
 
     fn key_input(&mut self, key: Key) {

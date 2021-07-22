@@ -31,7 +31,7 @@ fn main() {
     // Screenshot on [Meta] + [S]
     starman.bind((META, "s"), |_| cmd!(MAIM));
     // Close window on [Meta] + [Q]
-    starman.bind((META, "q"), |wm| wm.destroy(0));
+    starman.bind((META, "q"), |wm| wm.destroy_focus());
     // Open rofi on search key
     starman.bind((NONE, "XF86Search"), |_| cmd!(ROFI));
     // Run the window manager
