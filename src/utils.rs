@@ -13,10 +13,12 @@ macro_rules! st {
 macro_rules! cmd {
     ($cmd:expr) => {{
         std::thread::spawn(move || {
-            let _ = std::process::Command::new("sh")
-                .arg("-c")
-                .arg($cmd)
-                .status();
+            std::mem::drop(
+                std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg($cmd)
+                    .status(),
+            );
         });
     }};
 }

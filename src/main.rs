@@ -6,10 +6,13 @@
     feel free to modify it if you dislike any part of StarWM.
 */
 
+#![warn(clippy::all, clippy::pedantic)]
+
 mod config;
 #[macro_use]
 mod utils;
 mod key;
+mod mouse;
 mod wm;
 
 use key::{META, META_SHIFT, NONE};
@@ -32,7 +35,7 @@ fn main() {
     // Screenshot on [Meta] + [S]
     starman.bind((META, "s"), |_| cmd!(MAIM));
     // Close window on [Meta] + [Q]
-    starman.bind((META, "q"), |wm| wm.destroy_focus());
+    starman.bind((META, "q"), StarMan::destroy_focus);
     // Open rofi on search key
     starman.bind((NONE, "XF86Search"), |_| cmd!(ROFI));
     // Run the window manager

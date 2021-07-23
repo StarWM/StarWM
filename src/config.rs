@@ -24,8 +24,8 @@ impl Config {
         self.key_bindings.insert(key, handler);
     }
 
-    pub fn key(&self, key: Key) -> Option<&Handler> {
+    pub fn key(&self, key: &Key) -> Option<&Handler> {
         // Get a handler function when a key binding occurs
-        self.key_bindings.get(&key)
+        self.key_bindings.get(key)
     }
 }

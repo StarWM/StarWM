@@ -46,16 +46,16 @@ impl Key {
 }
 
 // Helpful into trait for short arguments
-impl Into<Key> for (ModMask, String) {
-    fn into(self) -> Key {
-        Key::new(self.0, &self.1)
+impl From<(ModMask, String)> for Key {
+    fn from(f: (ModMask, String)) -> Key {
+        Key::new(f.0, &f.1)
     }
 }
 
 // Helpful into trait for short arguments
-impl Into<Key> for (ModMask, &str) {
-    fn into(self) -> Key {
-        Key::new(self.0, self.1)
+impl From<(ModMask, &str)> for Key {
+    fn from(f: (ModMask, &str)) -> Key {
+        Key::new(f.0, f.1)
     }
 }
 
@@ -66,7 +66,7 @@ pub fn get_lookup(conn: &xcb::Connection) -> HashMap<u8, Vec<String>> {
     let start = setup.min_keycode();
     let width = setup.max_keycode() - start + 1;
     // Get the keyboard mapping
-    let keyboard_mapping = get_keyboard_mapping(&conn, start, width)
+    let keyboard_mapping = get_keyboard_mapping(conn, start, width)
         .get_reply()
         .unwrap();
     // Retrieve the key symbols and how many there are per keycode
@@ -86,7 +86,7 @@ pub fn get_lookup(conn: &xcb::Connection) -> HashMap<u8, Vec<String>> {
             if sym == 0 {
                 continue;
             }
-            let string_ptr = unsafe { x11::xlib::XKeysymToString(sym as u64) };
+            let string_ptr = unsafe { x11::xlib::XKeysymToString(u64::from(sym)) };
             syms.push(if string_ptr.is_null() {
                 st!("None")
             } else {
@@ -97,6 +97,7 @@ pub fn get_lookup(conn: &xcb::Connection) -> HashMap<u8, Vec<String>> {
             });
         }
         // Insert into result table
+        #[allow(clippy::cast_possible_truncation)]
         result.insert(start + keycode as u8, syms);
     }
     result
