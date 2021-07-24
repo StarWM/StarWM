@@ -178,8 +178,8 @@ impl StarMan {
         if let Some(start) = self.mouse.as_ref() {
             let end = MouseInfo::motion(motion_event);
             // Calculate deltas
-            let delta_x = end.root_x - start.root_x;
-            let delta_y = end.root_y - start.root_y;
+            let delta_x = (end.root_x - start.root_x) as i32;
+            let delta_y = (end.root_y - start.root_y) as i32;
             if delta_x == 0 && delta_y == 0 {
                 // Exit if only a click
                 return;
@@ -187,29 +187,15 @@ impl StarMan {
                 // Move window if drag was performed (with the left mouse button)
                 if let Some(geo) = start.geo {
                     if resize {
-                        let w = geo.2 as i16 + delta_x;
-                        let h = geo.3 as i16 + delta_y;
+                        let w = geo.2 as i32 + delta_x;
+                        let h = geo.3 as i32 + delta_y;
                         if w > 0 && h > 0 {
-                            xcb::configure_window(
-                                &self.conn,
-                                start.child,
-                                &[
-                                    (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
-                                    (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
-                                ],
-                            );
+                            self.resize_window(start.child, w, h);
                         }
                     } else {
-                        let x = geo.0 as i16 + delta_x;
-                        let y = geo.1 as i16 + delta_y;
-                        xcb::configure_window(
-                            &self.conn,
-                            start.child,
-                            &[
-                                (xcb::CONFIG_WINDOW_X as u16, x as u32),
-                                (xcb::CONFIG_WINDOW_Y as u16, y as u32),
-                            ],
-                        );
+                        let x = geo.0 as i32 + delta_x;
+                        let y = geo.1 as i32 + delta_y;
+                        self.move_window(start.child, x, y);
                     }
                 }
             }
@@ -285,6 +271,28 @@ impl StarMan {
             xcb::NONE,
             button,
             mods,
+        );
+    }
+
+    fn move_window(&self, window: u32, x: i32, y: i32) {
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[
+                (xcb::CONFIG_WINDOW_X as u16, x as u32),
+                (xcb::CONFIG_WINDOW_Y as u16, y as u32),
+            ],
+        );
+    }
+
+    fn resize_window(&self, window: u32, w: i32, h: i32) {
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[
+                (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
+                (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
+            ],
         );
     }
 }
