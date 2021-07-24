@@ -1,7 +1,7 @@
 // Wm.rs - This is where all the magic happens
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 use crate::config::{Config, Handler};
-use crate::key::{get_lookup, Key};
+use crate::key::{get_lookup, Key, META, META_SHIFT};
 use crate::mouse::MouseInfo;
 use std::collections::HashMap;
 use xcb::Connection;
@@ -38,20 +38,8 @@ impl StarMan {
             xcb::randr::NOTIFY_MASK_CRTC_CHANGE as u16,
         );
         for button in [0, 3] {
-            xcb::grab_button(
-                &conn,
-                false,
-                screen.root(),
-                (xcb::EVENT_MASK_BUTTON_PRESS
-                    | xcb::EVENT_MASK_BUTTON_RELEASE
-                    | xcb::EVENT_MASK_POINTER_MOTION) as u16,
-                xcb::GRAB_MODE_ASYNC as u8,
-                xcb::GRAB_MODE_ASYNC as u8,
-                xcb::NONE,
-                xcb::NONE,
-                button,
-                xcb::MOD_MASK_4 as u16,
-            );
+            StarMan::grab_button(&conn, &screen, button, META as u16);
+            StarMan::grab_button(&conn, &screen, button, META_SHIFT as u16);
         }
         // Set root cursor
         let font = conn.generate_id();
@@ -177,6 +165,7 @@ impl StarMan {
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {
         // Handle mouse button click event
+        //let resize = button_press.state() == 65;
         let geo = xcb::get_geometry(&self.conn, button_press.child())
             .get_reply()
             .ok();
@@ -185,6 +174,7 @@ impl StarMan {
 
     fn motion_event(&mut self, motion_event: XMotionEvent) {
         // Handle mouse motion event
+        let resize = motion_event.state() == 321;
         if let Some(start) = self.mouse.as_ref() {
             let end = MouseInfo::motion(motion_event);
             // Calculate deltas
@@ -196,16 +186,31 @@ impl StarMan {
             } else if start.detail == 1 {
                 // Move window if drag was performed (with the left mouse button)
                 if let Some(geo) = start.geo {
-                    let x = geo.0 as i16 + delta_x;
-                    let y = geo.1 as i16 + delta_y;
-                    xcb::configure_window(
-                        &self.conn,
-                        start.child,
-                        &[
-                            (xcb::CONFIG_WINDOW_X as u16, x as u32),
-                            (xcb::CONFIG_WINDOW_Y as u16, y as u32),
-                        ],
-                    );
+                    if resize {
+                        let w = geo.2 as i16 + delta_x;
+                        let h = geo.3 as i16 + delta_y;
+                        if w > 0 && h > 0 {
+                            xcb::configure_window(
+                                &self.conn,
+                                start.child,
+                                &[
+                                    (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
+                                    (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
+                                ],
+                            );
+                        }
+                    } else {
+                        let x = geo.0 as i16 + delta_x;
+                        let y = geo.1 as i16 + delta_y;
+                        xcb::configure_window(
+                            &self.conn,
+                            start.child,
+                            &[
+                                (xcb::CONFIG_WINDOW_X as u16, x as u32),
+                                (xcb::CONFIG_WINDOW_Y as u16, y as u32),
+                            ],
+                        );
+                    }
                 }
             }
         }
@@ -264,5 +269,22 @@ impl StarMan {
         if let Some(&target) = self.floating.get(self.focus) {
             self.destroy(target);
         }
+    }
+
+    fn grab_button(conn: &xcb::Connection, screen: &xcb::Screen, button: u8, mods: u16) {
+        xcb::grab_button(
+            conn,
+            false,
+            screen.root(),
+            (xcb::EVENT_MASK_BUTTON_PRESS
+                | xcb::EVENT_MASK_BUTTON_RELEASE
+                | xcb::EVENT_MASK_POINTER_MOTION) as u16,
+            xcb::GRAB_MODE_ASYNC as u8,
+            xcb::GRAB_MODE_ASYNC as u8,
+            xcb::NONE,
+            xcb::NONE,
+            button,
+            mods,
+        );
     }
 }
