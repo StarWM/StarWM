@@ -4,7 +4,7 @@
   </a>
 </p>
 
-**Please Note**: *StarWM is not in a very usable state as of yet. You can pretty much open, close and move windows and quit, and that's about it. It is for this reason that there is very little documentation as it will most likely change quite quickly.*
+**Please Note**: *StarWM is not in a very usable state as of yet. It is for this reason that there is very little documentation as it will most likely change quite quickly.*
 
 <hr>
 

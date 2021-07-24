@@ -180,23 +180,22 @@ impl StarMan {
             // Calculate deltas
             let delta_x = (end.root_x - start.root_x) as i32;
             let delta_y = (end.root_y - start.root_y) as i32;
-            if delta_x == 0 && delta_y == 0 {
+            if (delta_x == 0 && delta_y == 0) || start.detail != 1 {
                 // Exit if only a click
                 return;
-            } else if start.detail == 1 {
-                // Move window if drag was performed (with the left mouse button)
-                if let Some(geo) = start.geo {
-                    if resize {
-                        let w = geo.2 as i32 + delta_x;
-                        let h = geo.3 as i32 + delta_y;
-                        if w > 0 && h > 0 {
-                            self.resize_window(start.child, w, h);
-                        }
-                    } else {
-                        let x = geo.0 as i32 + delta_x;
-                        let y = geo.1 as i32 + delta_y;
-                        self.move_window(start.child, x, y);
+            }
+            // Move window if drag was performed (with the left mouse button)
+            if let Some(geo) = start.geo {
+                if resize {
+                    let w = geo.2 as i32 + delta_x;
+                    let h = geo.3 as i32 + delta_y;
+                    if w > 0 && h > 0 {
+                        self.resize_window(start.child, w, h);
                     }
+                } else {
+                    let x = geo.0 as i32 + delta_x;
+                    let y = geo.1 as i32 + delta_y;
+                    self.move_window(start.child, x, y);
                 }
             }
         }
