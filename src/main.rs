@@ -13,6 +13,7 @@ mod config;
 mod utils;
 mod key;
 mod mouse;
+mod window;
 mod wm;
 
 use key::{META, META_SHIFT, NONE};

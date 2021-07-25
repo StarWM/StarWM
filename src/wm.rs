@@ -1,9 +1,9 @@
 // Wm.rs - This is where all the magic happens
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 use crate::config::{Config, Handler};
-use crate::key::{get_lookup, Key, META, META_SHIFT};
+use crate::key::{get_lookup, Key, SymTable, META, META_SHIFT};
 use crate::mouse::MouseInfo;
-use std::collections::HashMap;
+use crate::window::Workspace;
 use xcb::Connection;
 
 // Shorthand for an X events
@@ -19,9 +19,9 @@ pub type XMotionEvent<'a> = &'a xcb::MotionNotifyEvent;
 pub struct StarMan {
     conn: Connection,
     conf: Config,
-    keymap: HashMap<u8, Vec<String>>,
-    floating: Vec<u32>,
-    focus: usize,
+    keymap: SymTable,
+    workspaces: Vec<Workspace>,
+    workspace: usize,
     mouse: Option<MouseInfo>,
 }
 
@@ -31,43 +31,42 @@ impl StarMan {
         let (conn, _) = Connection::connect(None).expect("Failed to connect to X");
         let setup = conn.get_setup();
         let screen = setup.roots().next().unwrap();
-        // Establish a grab for mouse events
-        xcb::randr::select_input(
-            &conn,
-            screen.root(),
-            xcb::randr::NOTIFY_MASK_CRTC_CHANGE as u16,
-        );
-        for button in [0, 3] {
-            StarMan::grab_button(&conn, &screen, button, META as u16);
-            StarMan::grab_button(&conn, &screen, button, META_SHIFT as u16);
+        // Set up workspaces
+        let workspaces = vec![
+            // New workspace, triggered on [Meta] + [WORKSPACE NUMBER]
+            Workspace::new((META, "1")),
+            Workspace::new((META, "2")),
+            Workspace::new((META, "3")),
+            Workspace::new((META, "4")),
+            Workspace::new((META, "5")),
+            Workspace::new((META, "6")),
+            Workspace::new((META, "7")),
+            Workspace::new((META, "8")),
+            Workspace::new((META, "9")),
+            Workspace::new((META, "0")),
+        ];
+        // Establish grab for workspace trigger events
+        let keymap = get_lookup(&conn);
+        for trigger in workspaces.iter().map(|w| &w.trigger) {
+            StarMan::grab_key(&conn, &screen, trigger, &keymap);
         }
-        // Set root cursor
-        let font = conn.generate_id();
-        xcb::open_font(&conn, font, "cursor");
-        let cursor = conn.generate_id();
-        xcb::create_glyph_cursor(
-            &conn, cursor, font, font, 68, 69, 0, 0, 0, 0xffff, 0xffff, 0xffff,
-        );
-        xcb::change_window_attributes(&conn, screen.root(), &[(xcb::CW_CURSOR, cursor)]);
+        // Establish a grab for mouse events
+        StarMan::grab_button(&conn, &screen, 1, META as u16);
+        StarMan::grab_button(&conn, &screen, 1, META_SHIFT as u16);
+        // Set root cursor as normal left pointer
+        StarMan::set_cursor(&conn, &screen, 68);
         // Establish a grab for notification events
-        xcb::change_window_attributes(
-            &conn,
-            screen.root(),
-            &[(
-                xcb::CW_EVENT_MASK,
-                xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY as u32,
-            )],
-        );
+        StarMan::grab_notify_events(&conn, &screen);
         // Write buffer to server
         conn.flush();
         // Instantiate and return
         Self {
-            keymap: get_lookup(&conn),
-            floating: vec![],
+            keymap,
+            workspaces,
+            workspace: 0,
             conf: Config::new(),
             conn,
             mouse: None,
-            focus: 0,
         }
     }
 
@@ -127,45 +126,35 @@ impl StarMan {
     fn map_event(&mut self, map_notify: XMapEvent) {
         // Handle window map event
         let window = map_notify.window();
-        // Push to floating windows
-        self.floating.push(window);
+        // Add to the workspace
+        self.workspace_mut().add(window);
         // Grab the events where the cursor leaves and enters the window
-        xcb::change_window_attributes(
-            &self.conn,
-            window,
-            &[(
-                xcb::CW_EVENT_MASK,
-                xcb::EVENT_MASK_ENTER_WINDOW | xcb::EVENT_MASK_LEAVE_WINDOW,
-            )],
-        );
+        self.grab_enter_leave(window);
         // Focus on this window
-        xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
-        self.focus = self.floating.len().saturating_sub(1);
+        self.focus_window(window);
     }
 
     fn destroy_event(&mut self, destroy_notify: XDestroyEvent) {
         // Handle window destroy event
         let window = destroy_notify.window();
-        self.floating.retain(|&w| w != window);
-        // Fix focus if need be
-        if self.focus >= self.floating.len() {
-            self.focus = self.floating.len().saturating_sub(1);
-        }
-        if let Some(&target) = self.floating.get(self.focus) {
-            xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, target, 0);
+        // Remove from workspace
+        self.workspace_mut().remove(window);
+        // Refocus
+        if let Some(target) = self.workspace().get_focus() {
+            self.focus_window(target);
         }
     }
 
     fn enter_event(&mut self, enter_notify: XEnterEvent) {
         // Handle window enter event
         let window = enter_notify.event();
-        xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
-        self.focus = self.floating.iter().position(|w| w == &window).unwrap();
+        // Focus window
+        self.focus_window(window);
+        self.workspace_mut().set_focus(window);
     }
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {
         // Handle mouse button click event
-        //let resize = button_press.state() == 65;
         let geo = xcb::get_geometry(&self.conn, button_press.child())
             .get_reply()
             .ok();
@@ -178,23 +167,23 @@ impl StarMan {
         if let Some(start) = self.mouse.as_ref() {
             let end = MouseInfo::motion(motion_event);
             // Calculate deltas
-            let delta_x = (end.root_x - start.root_x) as i32;
-            let delta_y = (end.root_y - start.root_y) as i32;
+            let delta_x = i64::from(end.root_x - start.root_x);
+            let delta_y = i64::from(end.root_y - start.root_y);
             if (delta_x == 0 && delta_y == 0) || start.detail != 1 {
-                // Exit if only a click
+                // Exit if only a click, or not using the left mouse button
                 return;
             }
-            // Move window if drag was performed (with the left mouse button)
+            // Move window if drag was performed
             if let Some(geo) = start.geo {
                 if resize {
-                    let w = geo.2 as i32 + delta_x;
-                    let h = geo.3 as i32 + delta_y;
+                    let w = i64::from(geo.2) + delta_x;
+                    let h = i64::from(geo.3) + delta_y;
                     if w > 0 && h > 0 {
                         self.resize_window(start.child, w, h);
                     }
                 } else {
-                    let x = geo.0 as i32 + delta_x;
-                    let y = geo.1 as i32 + delta_y;
+                    let x = geo.0 as i64 + delta_x;
+                    let y = geo.1 as i64 + delta_y;
                     self.move_window(start.child, x, y);
                 }
             }
@@ -205,10 +194,25 @@ impl StarMan {
         // Handle key press events
         let code = st!(self.keymap[&key_press.detail()][0]);
         let modifiers = key_press.state();
-        // Create key and call handler
+        // Create key
         let key = Key::new(modifiers.into(), &code);
+        // Check if user defined handler
         if let Some(handler) = self.conf.key(&key) {
             handler(self);
+            return;
+        }
+        // Check for workspace trigger
+        if let Some(idx) = self.workspaces.iter().position(|w| w.trigger == key) {
+            // Exit if already focussed
+            if idx == self.workspace {
+                return;
+            }
+            // Hide previous workspace windows
+            self.workspace().hide(&self.conn);
+            // Update index
+            self.workspace = idx;
+            // Show new workspace windows
+            self.workspace().show(&self.conn);
         }
     }
 
@@ -218,17 +222,7 @@ impl StarMan {
         let setup = self.conn.get_setup();
         let screen = setup.roots().next().unwrap();
         // Establish a grab on this shortcut
-        for code in key.xcode(&self.keymap) {
-            xcb::grab_key(
-                &self.conn,
-                false,
-                screen.root(),
-                key.mods as u16,
-                code,
-                xcb::GRAB_MODE_ASYNC as u8,
-                xcb::GRAB_MODE_ASYNC as u8,
-            );
-        }
+        StarMan::grab_key(&self.conn, &screen, &key, &self.keymap);
         // Perform the bind
         self.conf.bind_handler(key, handler);
     }
@@ -251,12 +245,46 @@ impl StarMan {
 
     pub fn destroy_focus(&mut self) {
         // Destroy the window that is currently focussed on
-        if let Some(&target) = self.floating.get(self.focus) {
+        if let Some(target) = self.workspace().get_focus() {
             self.destroy(target);
         }
     }
 
+    fn move_window(&self, window: u32, x: i64, y: i64) {
+        // Move a window to a specific X and Y coordinate
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[
+                (xcb::CONFIG_WINDOW_X as u16, x as u32),
+                (xcb::CONFIG_WINDOW_Y as u16, y as u32),
+            ],
+        );
+    }
+
+    fn resize_window(&self, window: u32, w: i64, h: i64) {
+        // Resize a window to a specific W and H size
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[
+                (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
+                (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
+            ],
+        );
+    }
+
+    fn set_cursor(conn: &xcb::Connection, screen: &xcb::Screen, k: u16) {
+        // Set the cursor on the screen
+        let f = conn.generate_id();
+        xcb::open_font(conn, f, "cursor");
+        let c = conn.generate_id();
+        xcb::create_glyph_cursor(conn, c, f, f, k, k + 1, 0, 0, 0, 0xffff, 0xffff, 0xffff);
+        xcb::change_window_attributes(conn, screen.root(), &[(xcb::CW_CURSOR, c)]);
+    }
+
     fn grab_button(conn: &xcb::Connection, screen: &xcb::Screen, button: u8, mods: u16) {
+        // Tell X to grab all mouse events with specific modifiers and buttons
         xcb::grab_button(
             conn,
             false,
@@ -273,25 +301,56 @@ impl StarMan {
         );
     }
 
-    fn move_window(&self, window: u32, x: i32, y: i32) {
-        xcb::configure_window(
-            &self.conn,
-            window,
-            &[
-                (xcb::CONFIG_WINDOW_X as u16, x as u32),
-                (xcb::CONFIG_WINDOW_Y as u16, y as u32),
-            ],
+    fn grab_key(conn: &xcb::Connection, screen: &xcb::Screen, key: &Key, keymap: &SymTable) {
+        // Tell X to grab all key events from a specific key
+        for code in key.xcode(keymap) {
+            xcb::grab_key(
+                conn,
+                false,
+                screen.root(),
+                key.mods as u16,
+                code,
+                xcb::GRAB_MODE_ASYNC as u8,
+                xcb::GRAB_MODE_ASYNC as u8,
+            );
+        }
+    }
+
+    fn grab_notify_events(conn: &xcb::Connection, screen: &xcb::Screen) {
+        // Tell X to grab all notify events on a screen
+        StarMan::grab(
+            conn,
+            screen.root(),
+            xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY as u32,
         );
     }
 
-    fn resize_window(&self, window: u32, w: i32, h: i32) {
-        xcb::configure_window(
+    fn grab_enter_leave(&self, window: u32) {
+        // Tell X to grab all enter and level events on screen
+        StarMan::grab(
             &self.conn,
             window,
-            &[
-                (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
-                (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
-            ],
+            xcb::EVENT_MASK_ENTER_WINDOW | xcb::EVENT_MASK_LEAVE_WINDOW,
         );
+    }
+
+    fn focus_window(&self, window: u32) {
+        // Tell X to set focus on a specific window
+        xcb::set_input_focus(&self.conn, xcb::INPUT_FOCUS_PARENT as u8, window, 0);
+    }
+
+    fn grab(conn: &xcb::Connection, window: u32, events: u32) {
+        // Generic helper function to set up an event grab on a window
+        xcb::change_window_attributes(conn, window, &[(xcb::CW_EVENT_MASK, events)]);
+    }
+
+    fn workspace(&self) -> &Workspace {
+        // Get the current workspace (immutable operations)
+        &self.workspaces[self.workspace]
+    }
+
+    fn workspace_mut(&mut self) -> &mut Workspace {
+        // Get the current workspace (mutable operations)
+        &mut self.workspaces[self.workspace]
     }
 }

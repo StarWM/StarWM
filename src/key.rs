@@ -7,6 +7,9 @@ pub use xcb::{
     MOD_MASK_SHIFT as SHIFT, NONE,
 };
 
+// Key table shorthand
+pub type SymTable = HashMap<u8, Vec<String>>;
+
 // Common combinations
 pub const META_SHIFT: ModMask = META | SHIFT;
 /*
@@ -33,7 +36,7 @@ impl Key {
         }
     }
 
-    pub fn xcode(&self, table: &HashMap<u8, Vec<String>>) -> Vec<u8> {
+    pub fn xcode(&self, table: &SymTable) -> Vec<u8> {
         // This gives out the X code for the key
         let mut result = vec![];
         for (k, v) in table {
