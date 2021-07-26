@@ -139,11 +139,7 @@ impl StarMan {
         // Focus on this window
         self.focus_window(window);
         // Give window a border
-        xcb::change_window_attributes(
-            &self.conn,
-            window,
-            &[(xcb::CW_BORDER_PIXEL, self.conf.unfocused_border.colour)],
-        );
+        self.border_unfocused(window);
         self.set_border_width(window, self.conf.unfocused_border.size);
     }
 
@@ -175,23 +171,30 @@ impl StarMan {
             &[(xcb::CONFIG_WINDOW_STACK_MODE as u16, xcb::STACK_MODE_ABOVE)],
         );
 
-        xcb::change_window_attributes(
-            &self.conn,
-            window,
-            &[(xcb::CW_BORDER_PIXEL, self.conf.focused_border.colour)],
-        );
+        self.border_focused(window);
         self.focus_window(window);
         self.workspace_mut().set_focus(window);
     }
 
     fn leave_event(&mut self, leave_notify: XLeaveEvent) {
         let window = leave_notify.event();
+        self.border_unfocused(window);
+    }
+
+    fn border_unfocused(&mut self, window: u32) {
         xcb::change_window_attributes(
             &self.conn,
             window,
             &[(xcb::CW_BORDER_PIXEL, self.conf.unfocused_border.colour)],
         );
-        self.set_border_width(window, self.conf.unfocused_border.size);
+    }
+
+    fn border_focused(&mut self, window: u32) {
+        xcb::change_window_attributes(
+            &self.conn,
+            window,
+            &[(xcb::CW_BORDER_PIXEL, self.conf.focused_border.colour)],
+        );
     }
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {
