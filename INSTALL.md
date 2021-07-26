@@ -29,8 +29,15 @@ sudo cp target/release/starwm /usr/bin/starwm
 After following the above guide, you will have installed StarWM.
 If you wish to add it into a desktop manager, then you can't just yet.
 
-The best way to get it started is to add this to your ~/.xinitrc file:
+The best way to get it started is to add this:
 
 ```sh
 exec starwm
 ```
+
+To the bottom of your `~/.xinitrc` file.
+
+From here you can either reboot into it, provided that you have disabled your desktop manager and added `startx` to your shells profile file.
+Alternatively, you can boot into a TTY and then run `startx` and you'll be good to go.
+
+### If you followed these steps correctly you should have installed StarWM on your machine!
