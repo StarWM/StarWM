@@ -28,3 +28,11 @@ There are plans to make this extensible, possibly through a Lua interpreter. We 
 Currently StarWM is not packaged in any distribution,
 
 Please see [INSTALL.md](INSTALL.md) for installation instructions
+
+# Made with love by Cob:web-Aclevo and our Open source contributors:
+
+@curlpipe - Lead Developer
+
+@lyiriyah - Contributing towards active window features.
+
+### Please join the Cob:web-Aclevo discord to talk to us and contribute to our projects: https://discord.gg/z3GXvGtuek
