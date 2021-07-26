@@ -45,6 +45,11 @@ impl StarMan {
             Workspace::new((META, "9")),
             Workspace::new((META, "0")),
         ];
+        // Call XInitThreads to.. well.. init threads
+        unsafe {
+            x11::xlib::XInitThreads();
+        }
+
         // Establish grab for workspace trigger events
         let keymap = get_lookup(&conn);
         for trigger in workspaces.iter().map(|w| &w.trigger) {
@@ -159,6 +164,11 @@ impl StarMan {
         // Handle window enter event
         let window = enter_notify.event();
         // Focus window
+        unsafe {
+            let display = x11::xlib::XOpenDisplay(std::ptr::null());
+            x11::xlib::XRaiseWindow(display, window.into());
+            x11::xlib::XCloseDisplay(display);
+        }
         self.focus_window(window);
         self.workspace_mut().set_focus(window);
     }
