@@ -150,32 +150,14 @@ impl StarMan {
         let window = enter_notify.event();
         // Focus window
         unsafe {
-            println!("setting OverrideRedirect");
-            println!(
-                "OverrideRedirect is {}",
-                xcb::xproto::get_window_attributes(&self.conn, window)
-                    .get_reply()
-                    .unwrap()
-                    .override_redirect()
-            );
             xcb::xproto::change_window_attributes(
                 &self.conn,
                 window,
                 &[(xcb::xproto::CW_OVERRIDE_REDIRECT, true as u32)],
             );
-            println!(
-                "OverrideRedirect is {}",
-                xcb::xproto::get_window_attributes(&self.conn, window)
-                    .get_reply()
-                    .unwrap()
-                    .override_redirect()
-            );
-            println!("getting display");
+
             let display = x11::xlib::XOpenDisplay(std::ptr::null());
-            println!("display is {:?}", display);
-            println!("raising window {}", window);
             let raise_result = x11::xlib::XRaiseWindow(display, window.into());
-            println!("result is {}", raise_result);
             x11::xlib::XCloseDisplay(display);
         }
         self.focus_window(window);
