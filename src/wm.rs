@@ -45,6 +45,11 @@ impl StarMan {
             Workspace::new((META, "9")),
             Workspace::new((META, "0")),
         ];
+        // Call XInitThreads to.. well.. init threads
+        unsafe {
+            x11::xlib::XInitThreads();
+        }
+
         // Establish grab for workspace trigger events
         let keymap = get_lookup(&conn);
         for trigger in workspaces.iter().map(|w| &w.trigger) {
