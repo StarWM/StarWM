@@ -150,12 +150,6 @@ impl StarMan {
         let window = enter_notify.event();
         // Focus window
         unsafe {
-            xcb::xproto::change_window_attributes(
-                &self.conn,
-                window,
-                &[(xcb::xproto::CW_OVERRIDE_REDIRECT, true as u32)],
-            );
-
             let display = x11::xlib::XOpenDisplay(std::ptr::null());
             x11::xlib::XRaiseWindow(display, window.into());
             x11::xlib::XCloseDisplay(display);
