@@ -141,10 +141,7 @@ impl StarMan {
         xcb::change_window_attributes(
             &self.conn,
             window,
-            &[(
-                xcb::CW_BORDER_PIXEL,
-                self.conf.border.colour,
-            )],
+            &[(xcb::CW_BORDER_PIXEL, self.conf.border.colour)],
         );
         self.set_border_width(window, self.conf.border.size);
     }
@@ -164,11 +161,18 @@ impl StarMan {
         // Handle window enter event
         let window = enter_notify.event();
         // Focus window
+        /*
         unsafe {
             let display = x11::xlib::XOpenDisplay(std::ptr::null());
             x11::xlib::XRaiseWindow(display, window.into());
             x11::xlib::XCloseDisplay(display);
         }
+         */
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[(xcb::CONFIG_WINDOW_STACK_MODE as u16, xcb::STACK_MODE_ABOVE)],
+        );
         self.focus_window(window);
         self.workspace_mut().set_focus(window);
     }
@@ -298,9 +302,7 @@ impl StarMan {
         xcb::configure_window(
             &self.conn,
             window,
-            &[
-                (xcb::CONFIG_WINDOW_BORDER_WIDTH as u16, width)
-            ],
+            &[(xcb::CONFIG_WINDOW_BORDER_WIDTH as u16, width)],
         );
     }
 
