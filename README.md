@@ -31,8 +31,8 @@ Please see [INSTALL.md](INSTALL.md) for installation instructions
 
 # Made with love by Cob:web-Aclevo and our Open source contributors:
 
-@curlpipe - Lead Developer
+[curlpipe](https://github.com/curlpipe) - Lead Developer
 
-@lyiriyah - Contributing towards active window features.
+[lyiriyah](https://github.com/lyiriyah) - Contributing towards active window features.
 
 ### Please join the Cob:web-Aclevo discord to talk to us and contribute to our projects: https://discord.gg/z3GXvGtuek
