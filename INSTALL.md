@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="#">
+    <img src="media/banner.jpg" width="100%">
+  </a>
+</p>
+
 # Installation
 
 Installation assumes that you already have installed the latest rust toolchain. If not please install it from here: https://rust-lang.org. 
