@@ -25,28 +25,6 @@ StarWM started because I was curious to see how practical Rust would be in criti
 There are plans to make this extensible, possibly through a Lua interpreter. We are looking into if it could function perfectly as both a tiling and floating window manager, perhaps I could add window decorations too.
 
 # Installation
-Please see [INSTALL.md]()
+Currently StarWM is not packaged in any distribution,
 
-Installation assumes you have an up to date Rust toolchain installed https://rust-lang.org. 
-
-You will also need to have several X development libraries. They're usually under something like `libxcb-devel` and `libx11-devel`. Have a search in your package manager. There might be other libraries needed, but I'm not totally sure.
-
-```sh
-git clone https://github.com/StarWM/StarWM.git
-cd StarWM
-cargo build --release
-sudo cp target/release/starwm /usr/bin/starwm
-```
-After following the above guide, you will have installed StarWM.
-If you wish to add it into a desktop manager, then you can't just yet.
-
-The best way to get it started is to add this:
-
-```sh
-exec starwm
-```
-
-To the bottom of your `~/.xinitrc` file.
-
-From here you can either reboot into it, provided that you have disabled your desktop manager and added `startx` to your shells profile file.
-Alternatively, you can boot into a TTY and then run `startx` and you'll be good to go.
+Please see [INSTALL.md](INSTALL.md) for installation instructions
