@@ -137,6 +137,16 @@ impl StarMan {
         self.grab_enter_leave(window);
         // Focus on this window
         self.focus_window(window);
+        // Give window a border
+        xcb::change_window_attributes(
+            &self.conn,
+            window,
+            &[(
+                xcb::CW_BORDER_PIXEL,
+                self.conf.border.colour,
+            )],
+        );
+        self.set_border_width(window, self.conf.border.size);
     }
 
     fn destroy_event(&mut self, destroy_notify: XDestroyEvent) {
@@ -280,6 +290,16 @@ impl StarMan {
             &[
                 (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
                 (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
+            ],
+        );
+    }
+
+    fn set_border_width(&self, window: u32, width: u32) {
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[
+                (xcb::CONFIG_WINDOW_BORDER_WIDTH as u16, width)
             ],
         );
     }
