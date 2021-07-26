@@ -157,7 +157,7 @@ impl StarMan {
             );
 
             let display = x11::xlib::XOpenDisplay(std::ptr::null());
-            let raise_result = x11::xlib::XRaiseWindow(display, window.into());
+            x11::xlib::XRaiseWindow(display, window.into());
             x11::xlib::XCloseDisplay(display);
         }
         self.focus_window(window);
