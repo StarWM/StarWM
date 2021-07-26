@@ -14,18 +14,19 @@
 ![StarWM](https://img.shields.io/badge/starwm-181818?style=for-the-badge&logo=riseup&logoColor=aqua)
 
 # StarWM
-A basic X window manager in Rust.
+StarWM is an extensible window manager written in Rust.
 
 <img src="media/screenshot.png" width="100%">
 
 # Why?
-I was curious to see how practical Rust would be in critical userspace software, and I wanted to experiment with XCB for a long time. If you are a fellow Rustacean, and you'd like to have a crack at building your own window manager, feel free to go to the initial commit and work from there, or if you understand the code as a whole, feel free to take it for yourself and modify it to your liking, just be sure to keep it free and open source under the GPL3 license if you plan to redistribute your copy!
+StarWM started because I was curious to see how practical Rust would be in critical userspace software, and I wanted to experiment with XCB for a long time. If you are a fellow Rustacean, and you'd like to have a crack at building your own window manager, feel free to go to the initial commit and work from there, or if you understand the code as a whole, feel free to take it for yourself and modify it to your liking, just be sure to keep it free and open source under the GPL3 license if you plan to redistribute your copy!
 
 # Plans?
-I plan to make this extensible, possibly through a Lua interpreter. But I don't intend to actively work on this project just yet.
-I would like it if it could function perfectly as both a tiling and floating window manager, perhaps I could add window decorations too.
+There are plans to make this extensible, possibly through a Lua interpreter. We are looking into if it could function perfectly as both a tiling and floating window manager, perhaps I could add window decorations too.
 
 # Installation
+Please see [INSTALL.md]()
+
 Installation assumes you have an up to date Rust toolchain installed https://rust-lang.org. 
 
 You will also need to have several X development libraries. They're usually under something like `libxcb-devel` and `libx11-devel`. Have a search in your package manager. There might be other libraries needed, but I'm not totally sure.
