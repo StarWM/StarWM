@@ -98,7 +98,8 @@ impl StarMan {
                 }
                 // On mouse leaving a window
                 xcb::LEAVE_NOTIFY => {
-                    let _: XLeaveEvent = unsafe { xcb::cast_event(&event) };
+                    let leave_notify: XLeaveEvent = unsafe { xcb::cast_event(&event) };
+                    self.leave_event(leave_notify);
                 }
                 // On mouse button press
                 xcb::BUTTON_PRESS => {
@@ -141,9 +142,9 @@ impl StarMan {
         xcb::change_window_attributes(
             &self.conn,
             window,
-            &[(xcb::CW_BORDER_PIXEL, self.conf.border.colour)],
+            &[(xcb::CW_BORDER_PIXEL, self.conf.unfocused_border.colour)],
         );
-        self.set_border_width(window, self.conf.border.size);
+        self.set_border_width(window, self.conf.unfocused_border.size);
     }
 
     fn destroy_event(&mut self, destroy_notify: XDestroyEvent) {
@@ -173,8 +174,24 @@ impl StarMan {
             window,
             &[(xcb::CONFIG_WINDOW_STACK_MODE as u16, xcb::STACK_MODE_ABOVE)],
         );
+
+        xcb::change_window_attributes(
+            &self.conn,
+            window,
+            &[(xcb::CW_BORDER_PIXEL, self.conf.focused_border.colour)],
+        );
         self.focus_window(window);
         self.workspace_mut().set_focus(window);
+    }
+
+    fn leave_event(&mut self, leave_notify: XLeaveEvent) {
+        let window = leave_notify.event();
+        xcb::change_window_attributes(
+            &self.conn,
+            window,
+            &[(xcb::CW_BORDER_PIXEL, self.conf.unfocused_border.colour)],
+        );
+        self.set_border_width(window, self.conf.unfocused_border.size);
     }
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {

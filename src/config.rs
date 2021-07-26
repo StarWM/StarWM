@@ -9,7 +9,8 @@ pub type Handler = fn(&mut StarMan) -> ();
 // Configuration that holds the key bindings within the window manager
 pub struct Config {
     pub key_bindings: HashMap<Key, Handler>,
-    pub border: WindowBorder,
+    pub unfocused_border: WindowBorder,
+    pub focused_border: WindowBorder,
 }
 
 impl Config {
@@ -17,9 +18,13 @@ impl Config {
         // Start a fresh configuration struct
         Self {
             key_bindings: HashMap::new(),
-            border: WindowBorder {
+            unfocused_border: WindowBorder {
                 size: 2,
                 colour: 0x383838,
+            },
+            focused_border: WindowBorder {
+                size: 2,
+                colour: 0x006755,
             },
         }
     }
