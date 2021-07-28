@@ -158,13 +158,6 @@ impl StarMan {
         // Handle window enter event
         let window = enter_notify.event();
         // Focus window
-        /*
-        unsafe {
-            let display = x11::xlib::XOpenDisplay(std::ptr::null());
-            x11::xlib::XRaiseWindow(display, window.into());
-            x11::xlib::XCloseDisplay(display);
-        }
-         */
         xcb::configure_window(
             &self.conn,
             window,
@@ -177,11 +170,13 @@ impl StarMan {
     }
 
     fn leave_event(&mut self, leave_notify: XLeaveEvent) {
+        // Handle window leave event
         let window = leave_notify.event();
         self.border_unfocused(window);
     }
 
     fn border_unfocused(&mut self, window: u32) {
+        // Change the border of a window to an unfocussed border style
         xcb::change_window_attributes(
             &self.conn,
             window,
@@ -190,6 +185,7 @@ impl StarMan {
     }
 
     fn border_focused(&mut self, window: u32) {
+        // Change the border of a window to a focussed border style
         xcb::change_window_attributes(
             &self.conn,
             window,
@@ -319,6 +315,7 @@ impl StarMan {
     }
 
     fn set_border_width(&self, window: u32, width: u32) {
+        // Set the border width of a window
         xcb::configure_window(
             &self.conn,
             window,

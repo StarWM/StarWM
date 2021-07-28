@@ -7,6 +7,7 @@
 */
 
 #![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::unreadable_literal)]
 
 mod config;
 #[macro_use]
