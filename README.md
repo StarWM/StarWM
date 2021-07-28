@@ -14,38 +14,27 @@
 ![StarWM](https://img.shields.io/badge/starwm-181818?style=for-the-badge&logo=riseup&logoColor=aqua)
 
 # StarWM
-A basic X window manager in Rust.
+StarWM is an extensible window manager written in Rust.
 
 <img src="media/screenshot.png" width="100%">
 
 # Why?
-I was curious to see how practical Rust would be in critical userspace software, and I wanted to experiment with XCB for a long time. If you are a fellow Rustacean, and you'd like to have a crack at building your own window manager, feel free to go to the initial commit and work from there, or if you understand the code as a whole, feel free to take it for yourself and modify it to your liking, just be sure to keep it free and open source under the GPL3 license if you plan to redistribute your copy!
+StarWM started because I was curious to see how practical Rust would be in critical userspace software, and I wanted to experiment with XCB for a long time. If you are a fellow Rustacean, and you'd like to have a crack at building your own window manager, feel free to go to the initial commit and work from there, or if you understand the code as a whole, feel free to take it for yourself and modify it to your liking, just be sure to keep it free and open source under the GPL3 license if you plan to redistribute your copy!
 
 # Plans?
-I plan to make this extensible, possibly through a Lua interpreter. But I don't intend to actively work on this project just yet.
-I would like it if it could function perfectly as both a tiling and floating window manager, perhaps I could add window decorations too.
+There are plans to make this extensible, possibly through a Lua interpreter. We are looking into if it could function perfectly as both a tiling and floating window manager, perhaps I could add window decorations too.
 
 # Installation
-Installation assumes you have an up to date Rust toolchain installed https://rust-lang.org. 
+Currently StarWM is not packaged in any distribution,
 
-You will also need to have several X development libraries. They're usually under something like `libxcb-devel` and `libx11-devel`. Have a search in your package manager. There might be other libraries needed, but I'm not totally sure.
+Please see [INSTALL.md](INSTALL.md) for installation instructions
 
-```sh
-git clone https://github.com/StarWM/StarWM.git
-cd StarWM
-cargo build --release
-sudo cp target/release/starwm /usr/bin/starwm
-```
-After following the above guide, you will have installed StarWM.
-If you wish to add it into a desktop manager, then you can't just yet.
+# Made with love by Cob:web-Aclevo and our Open source contributors:
 
-The best way to get it started is to add this:
+[Curlpipe](https://github.com/curlpipe) - Lead Developer
 
-```sh
-exec starwm
-```
+[lyiriyah](https://github.com/lyiriyah) - Contributing towards active window features.
 
-To the bottom of your `~/.xinitrc` file.
+[whyAdamSalt](https://github.com/whyadamsalt) - Writing installation instructions and re-wording the readme file.
 
-From here you can either reboot into it, provided that you have disabled your desktop manager and added `startx` to your shells profile file.
-Alternatively, you can boot into a TTY and then run `startx` and you'll be good to go.
+### Please join the Cob:web-Aclevo discord to talk to us and contribute to our projects: https://discord.gg/z3GXvGtuek
