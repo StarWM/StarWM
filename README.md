@@ -19,10 +19,10 @@ StarWM is an extensible window manager written in Rust.
 <img src="media/screenshot.png" width="100%">
 
 # Why?
-StarWM started because I was curious to see how practical Rust would be in critical userspace software, and I wanted to experiment with XCB for a long time. If you are a fellow Rustacean, and you'd like to have a crack at building your own window manager, feel free to go to the initial commit and work from there, or if you understand the code as a whole, feel free to take it for yourself and modify it to your liking, just be sure to keep it free and open source under the GPL3 license if you plan to redistribute your copy!
+StarWM is a window manager that was initially started as an experiment. Nowadays, it's a community effort to create a window manager that can be used on your favourite linux distro. StarWM isn't really usable day to day just yet, but with ongoing work, we hope that it will provide a great experience. We aim to keep the codebase as clean as possible, so that anyone can read the code and understand with as little effort as possible. Feel free to have a look at the commit history and take the time to understand how it's constructed. You can use it to create your own WM, if you feel like it, just be sure to keep the GPL3 license if redistributing it. 
 
 # Plans?
-There are plans to make this extensible, possibly through a Lua interpreter. We are looking into if it could function perfectly as both a tiling and floating window manager, perhaps I could add window decorations too.
+There are plans to make this extensible, possibly through a Lua interpreter. We are looking into if it could function perfectly as both a tiling and floating window manager, perhaps the addition of window decorations would also be possible.
 
 # Installation
 Currently StarWM is not packaged in any distribution,
