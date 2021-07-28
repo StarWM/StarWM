@@ -45,6 +45,11 @@ impl StarMan {
             Workspace::new((META, "9")),
             Workspace::new((META, "0")),
         ];
+        // Call XInitThreads to.. well.. init threads
+        unsafe {
+            x11::xlib::XInitThreads();
+        }
+
         // Establish grab for workspace trigger events
         let keymap = get_lookup(&conn);
         for trigger in workspaces.iter().map(|w| &w.trigger) {
@@ -93,7 +98,8 @@ impl StarMan {
                 }
                 // On mouse leaving a window
                 xcb::LEAVE_NOTIFY => {
-                    let _: XLeaveEvent = unsafe { xcb::cast_event(&event) };
+                    let leave_notify: XLeaveEvent = unsafe { xcb::cast_event(&event) };
+                    self.leave_event(leave_notify);
                 }
                 // On mouse button press
                 xcb::BUTTON_PRESS => {
@@ -133,15 +139,8 @@ impl StarMan {
         // Focus on this window
         self.focus_window(window);
         // Give window a border
-        xcb::change_window_attributes(
-            &self.conn,
-            window,
-            &[(
-                xcb::CW_BORDER_PIXEL,
-                self.conf.border.colour,
-            )],
-        );
-        self.set_border_width(window, self.conf.border.size);
+        self.border_unfocused(window);
+        self.set_border_width(window, self.conf.unfocused_border.size);
     }
 
     fn destroy_event(&mut self, destroy_notify: XDestroyEvent) {
@@ -159,8 +158,43 @@ impl StarMan {
         // Handle window enter event
         let window = enter_notify.event();
         // Focus window
+        /*
+        unsafe {
+            let display = x11::xlib::XOpenDisplay(std::ptr::null());
+            x11::xlib::XRaiseWindow(display, window.into());
+            x11::xlib::XCloseDisplay(display);
+        }
+         */
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[(xcb::CONFIG_WINDOW_STACK_MODE as u16, xcb::STACK_MODE_ABOVE)],
+        );
+
+        self.border_focused(window);
         self.focus_window(window);
         self.workspace_mut().set_focus(window);
+    }
+
+    fn leave_event(&mut self, leave_notify: XLeaveEvent) {
+        let window = leave_notify.event();
+        self.border_unfocused(window);
+    }
+
+    fn border_unfocused(&mut self, window: u32) {
+        xcb::change_window_attributes(
+            &self.conn,
+            window,
+            &[(xcb::CW_BORDER_PIXEL, self.conf.unfocused_border.colour)],
+        );
+    }
+
+    fn border_focused(&mut self, window: u32) {
+        xcb::change_window_attributes(
+            &self.conn,
+            window,
+            &[(xcb::CW_BORDER_PIXEL, self.conf.focused_border.colour)],
+        );
     }
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {
@@ -288,9 +322,7 @@ impl StarMan {
         xcb::configure_window(
             &self.conn,
             window,
-            &[
-                (xcb::CONFIG_WINDOW_BORDER_WIDTH as u16, width)
-            ],
+            &[(xcb::CONFIG_WINDOW_BORDER_WIDTH as u16, width)],
         );
     }
 
