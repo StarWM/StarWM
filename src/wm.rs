@@ -3,8 +3,8 @@
 use crate::config::{Config, Handler};
 use crate::key::{get_lookup, Key, SymTable, META, META_SHIFT};
 use crate::mouse::MouseInfo;
-use crate::window::Workspace;
-use xcb::Connection;
+use crate::window::{Workspace, BLACKLIST};
+use xcb::{xproto, Connection};
 
 // Shorthand for an X events
 pub type XMapEvent<'a> = &'a xcb::MapNotifyEvent;
@@ -132,6 +132,12 @@ impl StarMan {
     fn map_event(&mut self, map_notify: XMapEvent) {
         // Handle window map event
         let window = map_notify.window();
+        // Ensure window type isn't on the blacklist
+        let kind = self.get_atom_property(window, "_NET_WM_WINDOW_TYPE");
+        let kind = xcb::get_atom_name(&self.conn, kind).get_reply().unwrap();
+        if BLACKLIST.contains(&kind.name()) { return }
+        // Ensure that this window isn't already assigned to a workspace
+        if self.workspaces.iter().any(|w| w.contains(window)) { return }
         // Add to the workspace
         self.workspace_mut().add(window);
         // Grab the events where the cursor leaves and enters the window
@@ -330,6 +336,19 @@ impl StarMan {
         let c = conn.generate_id();
         xcb::create_glyph_cursor(conn, c, f, f, k, k + 1, 0, 0, 0, 0xffff, 0xffff, 0xffff);
         xcb::change_window_attributes(conn, screen.root(), &[(xcb::CW_CURSOR, c)]);
+    }
+
+    #[rustfmt::skip]
+    fn get_atom_property(&self, window: u32, property: &str) -> u32 {
+        // Get a property from an atom
+        let a = xcb::intern_atom(&self.conn, true, property)
+            .get_reply()
+            .unwrap()
+            .atom();
+        let prop = xproto::get_property(&self.conn, false, window, a, xproto::ATOM_ATOM, 0, 1024)
+            .get_reply()
+            .unwrap();
+        if prop.value_len() == 0 { 42 } else { prop.value()[0] }
     }
 
     fn grab_button(conn: &xcb::Connection, screen: &xcb::Screen, button: u8, mods: u16) {

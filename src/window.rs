@@ -1,6 +1,20 @@
 // Window.rs - Handles window arrangement and management
 use crate::key::Key;
 
+pub const BLACKLIST: [&str; 11] = [
+    "_NET_WM_WINDOW_TYPE_MENU",
+    "_NET_WM_WINDOW_TYPE_POPUP_MENU",
+    "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
+    "_NET_WM_WINDOW_TYPE_TOOLTIP",
+    "_NET_WM_WINDOW_TYPE_UTILITY",
+    "_NET_WM_WINDOW_TYPE_NOTIFICATION",
+    "_NET_WM_WINDOW_TYPE_TOOLBAR",
+    "_NET_WM_WINDOW_TYPE_SPLASH",
+    "_NET_WM_WINDOW_TYPE_DIALOG",
+    "_NET_WM_WINDOW_TYPE_DOCK",
+    "_NET_WM_WINDOW_TYPE_DND",
+];
+
 // Workspace struct that holds information about a specific workspace
 pub struct Workspace {
     pub trigger: Key,
@@ -55,5 +69,9 @@ impl Workspace {
         for window in &self.floating {
             xcb::unmap_window(conn, *window);
         }
+    }
+
+    pub fn contains(&self, window: u32) -> bool {
+        self.floating.contains(&window)
     }
 }
