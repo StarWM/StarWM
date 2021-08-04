@@ -156,6 +156,10 @@ impl StarMan {
     fn destroy_event(&mut self, destroy_notify: XDestroyEvent) {
         // Handle window destroy event
         let window = destroy_notify.window();
+        if self.is_monocle(window) {
+            // Is monocle, clear monocle
+            self.monocle_clear();
+        }
         // Remove from workspace
         self.workspace_mut().remove(window);
         // Refocus
@@ -175,7 +179,7 @@ impl StarMan {
         );
 
         self.border_focused(window);
-        if Some(window) != self.workspace().get_monocle() {
+        if !self.is_monocle(window) {
             self.focus_window(window);
             self.workspace_mut().set_focus(window);
         }
@@ -207,7 +211,8 @@ impl StarMan {
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {
         // Handle mouse button click event
-        if Some(button_press.child()) != self.workspace().get_monocle() {
+        if !self.is_monocle(button_press.child()) {
+            // Window isn't in monocle mode
             let geo = xcb::get_geometry(&self.conn, button_press.child())
                 .get_reply()
                 .ok();
@@ -293,11 +298,19 @@ impl StarMan {
             .atom();
         let data = xcb::ClientMessageData::from_data32([delete, xcb::CURRENT_TIME, 0, 0, 0]);
         let event = xcb::ClientMessageEvent::new(32, target, protocols, data);
+        // Clear monocle if target is monocle
+        if self.is_monocle(target) {
+            self.monocle_clear();
+        }
         // Send the event
         xcb::send_event(&self.conn, false, target, xcb::EVENT_MASK_NO_EVENT, &event);
     }
 
     pub fn destroy_focus(&mut self) {
+        // Check that focus isn't monocle
+        if self.workspace().get_monocle().is_some() {
+            self.monocle_clear();
+        }
         // Destroy the window that is currently focused on
         if let Some(target) = self.workspace().get_focus() {
             self.destroy(target);
@@ -347,6 +360,11 @@ impl StarMan {
             let geo = std::mem::take(&mut self.workspace_mut().previous_geometry).unwrap();
             self.reshape_window(monocle, geo.0, geo.1, geo.2 as i64, geo.3 as i64);
         }
+    }
+    
+    pub fn is_monocle(&mut self, window: u32) -> bool {
+        // Returns true if the window provided is in monocle mode
+        self.workspace().get_monocle() == Some(window)
     }
 
     fn move_window(&self, window: u32, x: i64, y: i64) {
