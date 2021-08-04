@@ -48,13 +48,13 @@ impl Workspace {
     }
 
     pub fn get_focus(&self) -> Option<u32> {
-        // Get the currently focussed window
+        // Get the currently focused window
         Some(*self.floating.get(self.focus)?)
     }
 
     pub fn set_focus(&mut self, window: u32) {
-        // Set the currently focussed window
-        self.focus = self.floating.iter().position(|w| w == &window).unwrap();
+        // Set the currently focused window
+        self.focus = self.find(window).unwrap();
     }
 
     pub fn show(&self, conn: &xcb::Connection) {
@@ -72,6 +72,11 @@ impl Workspace {
     }
 
     pub fn contains(&self, window: u32) -> bool {
+        // Check if this workspace contains a window
         self.floating.contains(&window)
+    }
+
+    pub fn find(&self, window: u32) -> Option<usize> {
+        self.floating.iter().position(|w| w == &window)
     }
 }

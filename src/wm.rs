@@ -135,9 +135,13 @@ impl StarMan {
         // Ensure window type isn't on the blacklist
         let kind = self.get_atom_property(window, "_NET_WM_WINDOW_TYPE");
         let kind = xcb::get_atom_name(&self.conn, kind).get_reply().unwrap();
-        if BLACKLIST.contains(&kind.name()) { return }
+        if BLACKLIST.contains(&kind.name()) {
+            return;
+        }
         // Ensure that this window isn't already assigned to a workspace
-        if self.workspaces.iter().any(|w| w.contains(window)) { return }
+        if self.workspaces.iter().any(|w| w.contains(window)) {
+            return;
+        }
         // Add to the workspace
         self.workspace_mut().add(window);
         // Grab the events where the cursor leaves and enters the window
@@ -182,7 +186,7 @@ impl StarMan {
     }
 
     fn border_unfocused(&mut self, window: u32) {
-        // Change the border of a window to an unfocussed border style
+        // Change the border of a window to an unfocused border style
         xcb::change_window_attributes(
             &self.conn,
             window,
@@ -191,7 +195,7 @@ impl StarMan {
     }
 
     fn border_focused(&mut self, window: u32) {
-        // Change the border of a window to a focussed border style
+        // Change the border of a window to a focused border style
         xcb::change_window_attributes(
             &self.conn,
             window,
@@ -249,7 +253,7 @@ impl StarMan {
         }
         // Check for workspace trigger
         if let Some(idx) = self.workspaces.iter().position(|w| w.trigger == key) {
-            // Exit if already focussed
+            // Exit if already focused
             if idx == self.workspace {
                 return;
             }
@@ -290,9 +294,26 @@ impl StarMan {
     }
 
     pub fn destroy_focus(&mut self) {
-        // Destroy the window that is currently focussed on
+        // Destroy the window that is currently focused on
         if let Some(target) = self.workspace().get_focus() {
             self.destroy(target);
+        }
+    }
+
+    pub fn move_window_to_workspace(&mut self, workspace: usize) {
+        // Move a window to a specific workspace
+        if workspace == self.workspace {
+            return;
+        }
+        // Get the focused window
+        if let Some(focus) = self.workspace().get_focus() {
+            // Remove from current workspace
+            self.workspace_mut().remove(focus);
+            // Unmap the window
+            xcb::unmap_window(&self.conn, focus);
+            // Add into new workspace and set focus
+            self.workspaces[workspace].add(focus);
+            self.workspaces[workspace].set_focus(focus);
         }
     }
 

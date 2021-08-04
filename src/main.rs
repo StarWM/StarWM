@@ -28,18 +28,32 @@ const MAIM: &str = "maim -suB --delay=0.1 | xclip -selection clipboard -t image/
 fn main() {
     // Initialise and run StarWM
     let mut starman = StarMan::new();
+
     // Exit on [Meta] + [Shift] + [BackSpace]
     starman.bind((META_SHIFT, "BackSpace"), |_| std::process::exit(0));
+    // Close window on [Meta] + [Q]
+    starman.bind((META, "q"), StarMan::destroy_focus);
+    // Move window to workspace on [Meta] + [Shift] + [WORKSPACE]
+    starman.bind((META_SHIFT, "1"), |s| s.move_window_to_workspace(0));
+    starman.bind((META_SHIFT, "2"), |s| s.move_window_to_workspace(1));
+    starman.bind((META_SHIFT, "3"), |s| s.move_window_to_workspace(2));
+    starman.bind((META_SHIFT, "4"), |s| s.move_window_to_workspace(3));
+    starman.bind((META_SHIFT, "5"), |s| s.move_window_to_workspace(4));
+    starman.bind((META_SHIFT, "6"), |s| s.move_window_to_workspace(5));
+    starman.bind((META_SHIFT, "7"), |s| s.move_window_to_workspace(6));
+    starman.bind((META_SHIFT, "8"), |s| s.move_window_to_workspace(7));
+    starman.bind((META_SHIFT, "9"), |s| s.move_window_to_workspace(8));
+    starman.bind((META_SHIFT, "0"), |s| s.move_window_to_workspace(9));
+
     // Start application launcher on [Meta] + [Space]
     starman.bind((META, "space"), |_| cmd!(ROFI));
     // Start terminal on [Meta] + [Return]
     starman.bind((META, "Return"), |_| cmd!(ALACRITTY));
     // Screenshot on [Meta] + [S]
     starman.bind((META, "s"), |_| cmd!(MAIM));
-    // Close window on [Meta] + [Q]
-    starman.bind((META, "q"), StarMan::destroy_focus);
     // Open rofi on search key
     starman.bind((NONE, "XF86Search"), |_| cmd!(ROFI));
+
     // Run the window manager
     starman.run();
 }
