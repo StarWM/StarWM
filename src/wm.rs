@@ -272,6 +272,10 @@ impl StarMan {
             self.workspace = idx;
             // Show new workspace windows
             self.workspace().show(&self.conn);
+            // Refocus monocle if need be
+            if let Some(monocle) = self.workspace().get_monocle() {
+                self.focus_window(monocle);
+            }
         }
     }
 
