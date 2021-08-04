@@ -87,6 +87,10 @@ impl Workspace {
         for window in &self.floating {
             xcb::map_window(conn, *window);
         }
+        // Show monocled window if need be
+        if let Some(monocle) = self.monocle {
+            xcb::map_window(conn, monocle);
+        }
     }
 
     pub fn hide(&self, conn: &xcb::Connection) {
@@ -94,14 +98,19 @@ impl Workspace {
         for window in &self.floating {
             xcb::unmap_window(conn, *window);
         }
+        // Hide monocled window if need be
+        if let Some(monocle) = self.monocle {
+            xcb::unmap_window(conn, monocle);
+        }
     }
 
     pub fn contains(&self, window: u32) -> bool {
         // Check if this workspace contains a window
-        self.floating.contains(&window)
+        self.floating.contains(&window) || self.monocle == Some(window)
     }
 
     pub fn find(&self, window: u32) -> Option<usize> {
+        // Find this window, returns None if not found, or if in monocle mode
         self.floating.iter().position(|w| w == &window)
     }
 }
