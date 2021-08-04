@@ -19,6 +19,8 @@ pub const BLACKLIST: [&str; 11] = [
 pub struct Workspace {
     pub trigger: Key,
     floating: Vec<u32>,
+    monocle: Option<u32>,
+    pub previous_geometry: Option<(i64, i64, u32, u32)>,
     focus: usize,
 }
 
@@ -28,6 +30,8 @@ impl Workspace {
         Self {
             trigger: trigger.into(),
             floating: vec![],
+            monocle: None,
+            previous_geometry: None,
             focus: 0,
         }
     }
@@ -55,6 +59,27 @@ impl Workspace {
     pub fn set_focus(&mut self, window: u32) {
         // Set the currently focused window
         self.focus = self.find(window).unwrap();
+    }
+
+    pub fn set_monocle(&mut self) -> Option<u32> {
+        // Set focused to monocle window
+        let focus = self.get_focus()?;
+        self.floating.retain(|&w| w != focus);
+        self.monocle = Some(focus);
+        return self.monocle;
+    }
+
+    pub fn get_monocle(&self) -> Option<u32> {
+        // Get the current monocle
+        self.monocle
+    }
+
+    pub fn clear_monocle(&mut self) -> Option<u32> {
+        // Clear the monocle
+        let monocle = self.monocle?;
+        self.floating.insert(self.focus, monocle);
+        self.monocle = None;
+        Some(monocle)
     }
 
     pub fn show(&self, conn: &xcb::Connection) {

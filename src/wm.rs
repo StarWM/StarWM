@@ -175,8 +175,10 @@ impl StarMan {
         );
 
         self.border_focused(window);
-        self.focus_window(window);
-        self.workspace_mut().set_focus(window);
+        if Some(window) != self.workspace().get_monocle() {
+            self.focus_window(window);
+            self.workspace_mut().set_focus(window);
+        }
     }
 
     fn leave_event(&mut self, leave_notify: XLeaveEvent) {
@@ -317,6 +319,34 @@ impl StarMan {
         }
     }
 
+    pub fn monocle_focus(&mut self) {
+        // Set the monocle to the focused window
+        if let Some(monocle) = self.workspace_mut().set_monocle() {
+            // Get current window geometry
+            let geo = xcb::get_geometry(&self.conn, monocle).get_reply().unwrap();
+            self.workspace_mut().previous_geometry = Some((
+                i64::from(geo.x()),
+                i64::from(geo.y()),
+                u32::from(geo.width()),
+                u32::from(geo.height()),
+            ));
+            // Get window and border size
+            let window = self.conn.get_setup().roots().next().unwrap();
+            let (w, h) = (window.width_in_pixels(), window.height_in_pixels());
+            let border = (self.conf.focused_border.size * 2) as i64;
+            // Move and Resize
+            self.reshape_window(monocle, 0, 0, w as i64 - border, h as i64 - border);
+        }
+    }
+
+    pub fn monocle_clear(&mut self) {
+        // Clear the monocle
+        if let Some(monocle) = self.workspace_mut().clear_monocle() {
+            let geo = std::mem::take(&mut self.workspace_mut().previous_geometry).unwrap();
+            self.reshape_window(monocle, geo.0, geo.1, geo.2 as i64, geo.3 as i64);
+        }
+    }
+
     fn move_window(&self, window: u32, x: i64, y: i64) {
         // Move a window to a specific X and Y coordinate
         xcb::configure_window(
@@ -335,6 +365,20 @@ impl StarMan {
             &self.conn,
             window,
             &[
+                (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
+                (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
+            ],
+        );
+    }
+
+    fn reshape_window(&self, window: u32, x: i64, y: i64, w: i64, h: i64) {
+        // Reshape a window to a specific position and size all in one
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[
+                (xcb::CONFIG_WINDOW_X as u16, x as u32),
+                (xcb::CONFIG_WINDOW_Y as u16, y as u32),
                 (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
                 (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
             ],
@@ -433,12 +477,12 @@ impl StarMan {
         xcb::change_window_attributes(conn, window, &[(xcb::CW_EVENT_MASK, events)]);
     }
 
-    fn workspace(&self) -> &Workspace {
+    pub fn workspace(&self) -> &Workspace {
         // Get the current workspace (immutable operations)
         &self.workspaces[self.workspace]
     }
 
-    fn workspace_mut(&mut self) -> &mut Workspace {
+    pub fn workspace_mut(&mut self) -> &mut Workspace {
         // Get the current workspace (mutable operations)
         &mut self.workspaces[self.workspace]
     }
