@@ -207,10 +207,12 @@ impl StarMan {
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {
         // Handle mouse button click event
-        let geo = xcb::get_geometry(&self.conn, button_press.child())
-            .get_reply()
-            .ok();
-        self.mouse = Some(MouseInfo::new(button_press, geo));
+        if Some(button_press.child()) != self.workspace().get_monocle() {
+            let geo = xcb::get_geometry(&self.conn, button_press.child())
+                .get_reply()
+                .ok();
+            self.mouse = Some(MouseInfo::new(button_press, geo));
+        }
     }
 
     fn motion_event(&mut self, motion_event: XMotionEvent) {
