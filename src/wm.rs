@@ -173,8 +173,12 @@ impl StarMan {
         // Remove from workspace
         self.workspace_mut().remove(window);
         // Refocus
-        if let Some(target) = self.workspace().get_focus() {
-            self.focus_window(target);
+        if let Some(monocle) = self.workspace().get_monocle() {
+            self.focus_window(monocle);
+        } else {
+            if let Some(target) = self.workspace().get_focus() {
+                self.focus_window(target);
+            }
         }
     }
 
