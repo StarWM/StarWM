@@ -146,8 +146,18 @@ impl StarMan {
         self.workspace_mut().add(window);
         // Grab the events where the cursor leaves and enters the window
         self.grab_enter_leave(window);
-        // Focus on this window
-        self.focus_window(window);
+        // If in monocle, restore layer position
+        if let Some(monocle) = self.workspace().get_monocle() {
+            xcb::configure_window(
+                &self.conn,
+                monocle,
+                &[(xcb::CONFIG_WINDOW_STACK_MODE as u16, xcb::STACK_MODE_ABOVE)],
+            );
+            self.focus_window(monocle);
+        } else {
+            // Focus on this window
+            self.focus_window(window);
+        }
         // Give window a border
         self.border_unfocused(window);
         self.set_border_width(window, self.conf.unfocused_border.size);
@@ -156,6 +166,10 @@ impl StarMan {
     fn destroy_event(&mut self, destroy_notify: XDestroyEvent) {
         // Handle window destroy event
         let window = destroy_notify.window();
+        if self.is_monocle(window) {
+            // Is monocle, clear monocle
+            self.monocle_clear();
+        }
         // Remove from workspace
         self.workspace_mut().remove(window);
         // Refocus
@@ -175,8 +189,10 @@ impl StarMan {
         );
 
         self.border_focused(window);
-        self.focus_window(window);
-        self.workspace_mut().set_focus(window);
+        if !self.is_monocle(window) {
+            self.focus_window(window);
+            self.workspace_mut().set_focus(window);
+        }
     }
 
     fn leave_event(&mut self, leave_notify: XLeaveEvent) {
@@ -205,10 +221,13 @@ impl StarMan {
 
     fn button_press_event(&mut self, button_press: XButtonPressEvent) {
         // Handle mouse button click event
-        let geo = xcb::get_geometry(&self.conn, button_press.child())
-            .get_reply()
-            .ok();
-        self.mouse = Some(MouseInfo::new(button_press, geo));
+        if !self.is_monocle(button_press.child()) {
+            // Window isn't in monocle mode
+            let geo = xcb::get_geometry(&self.conn, button_press.child())
+                .get_reply()
+                .ok();
+            self.mouse = Some(MouseInfo::new(button_press, geo));
+        }
     }
 
     fn motion_event(&mut self, motion_event: XMotionEvent) {
@@ -263,6 +282,10 @@ impl StarMan {
             self.workspace = idx;
             // Show new workspace windows
             self.workspace().show(&self.conn);
+            // Refocus monocle if need be
+            if let Some(monocle) = self.workspace().get_monocle() {
+                self.focus_window(monocle);
+            }
         }
     }
 
@@ -289,11 +312,19 @@ impl StarMan {
             .atom();
         let data = xcb::ClientMessageData::from_data32([delete, xcb::CURRENT_TIME, 0, 0, 0]);
         let event = xcb::ClientMessageEvent::new(32, target, protocols, data);
+        // Clear monocle if target is monocle
+        if self.is_monocle(target) {
+            self.monocle_clear();
+        }
         // Send the event
         xcb::send_event(&self.conn, false, target, xcb::EVENT_MASK_NO_EVENT, &event);
     }
 
     pub fn destroy_focus(&mut self) {
+        // Check that focus isn't monocle
+        if self.workspace().get_monocle().is_some() {
+            self.monocle_clear();
+        }
         // Destroy the window that is currently focused on
         if let Some(target) = self.workspace().get_focus() {
             self.destroy(target);
@@ -317,6 +348,39 @@ impl StarMan {
         }
     }
 
+    pub fn monocle_focus(&mut self) {
+        // Set the monocle to the focused window
+        if let Some(monocle) = self.workspace_mut().set_monocle() {
+            // Get current window geometry
+            let geo = xcb::get_geometry(&self.conn, monocle).get_reply().unwrap();
+            self.workspace_mut().previous_geometry = Some((
+                i64::from(geo.x()),
+                i64::from(geo.y()),
+                u32::from(geo.width()),
+                u32::from(geo.height()),
+            ));
+            // Get window and border size
+            let window = self.conn.get_setup().roots().next().unwrap();
+            let (w, h) = (window.width_in_pixels(), window.height_in_pixels());
+            let border = (self.conf.focused_border.size * 2) as i64;
+            // Move and Resize
+            self.reshape_window(monocle, 0, 0, w as i64 - border, h as i64 - border);
+        }
+    }
+
+    pub fn monocle_clear(&mut self) {
+        // Clear the monocle
+        if let Some(monocle) = self.workspace_mut().clear_monocle() {
+            let geo = std::mem::take(&mut self.workspace_mut().previous_geometry).unwrap();
+            self.reshape_window(monocle, geo.0, geo.1, geo.2 as i64, geo.3 as i64);
+        }
+    }
+    
+    pub fn is_monocle(&mut self, window: u32) -> bool {
+        // Returns true if the window provided is in monocle mode
+        self.workspace().get_monocle() == Some(window)
+    }
+
     fn move_window(&self, window: u32, x: i64, y: i64) {
         // Move a window to a specific X and Y coordinate
         xcb::configure_window(
@@ -335,6 +399,20 @@ impl StarMan {
             &self.conn,
             window,
             &[
+                (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
+                (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
+            ],
+        );
+    }
+
+    fn reshape_window(&self, window: u32, x: i64, y: i64, w: i64, h: i64) {
+        // Reshape a window to a specific position and size all in one
+        xcb::configure_window(
+            &self.conn,
+            window,
+            &[
+                (xcb::CONFIG_WINDOW_X as u16, x as u32),
+                (xcb::CONFIG_WINDOW_Y as u16, y as u32),
                 (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
                 (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),
             ],
@@ -433,12 +511,12 @@ impl StarMan {
         xcb::change_window_attributes(conn, window, &[(xcb::CW_EVENT_MASK, events)]);
     }
 
-    fn workspace(&self) -> &Workspace {
+    pub fn workspace(&self) -> &Workspace {
         // Get the current workspace (immutable operations)
         &self.workspaces[self.workspace]
     }
 
-    fn workspace_mut(&mut self) -> &mut Workspace {
+    pub fn workspace_mut(&mut self) -> &mut Workspace {
         // Get the current workspace (mutable operations)
         &mut self.workspaces[self.workspace]
     }

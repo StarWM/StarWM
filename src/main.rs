@@ -44,6 +44,14 @@ fn main() {
     starman.bind((META_SHIFT, "8"), |s| s.move_window_to_workspace(7));
     starman.bind((META_SHIFT, "9"), |s| s.move_window_to_workspace(8));
     starman.bind((META_SHIFT, "0"), |s| s.move_window_to_workspace(9));
+    // Toggle monocle mode on [Meta] + [M]
+    starman.bind((META, "m"), |s| {
+        if s.workspace().get_monocle().is_none() {
+            s.monocle_focus();
+        } else {
+            s.monocle_clear();
+        }
+    });
 
     // Start application launcher on [Meta] + [Space]
     starman.bind((META, "space"), |_| cmd!(ROFI));
