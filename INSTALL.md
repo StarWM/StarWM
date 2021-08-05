@@ -11,7 +11,7 @@ Installation assumes that you already have installed the latest rust toolchain. 
 # Dependencies:
 You will also need to have several X development libraries. They're usually under something like `libxcb-devel` and `libx11-devel`. These dependancies have different names under different package managers, however we have listed them down below.
 
-#### Ubuntu-based dependancy install:
+#### Debian-based dependancy install (includes Ubuntu):
 ```sh
 sudo apt-get install libxcb-randr0-dev libxcb-xtest0-dev libxcb-xinerama0-dev libxcb-shape0-dev libxcb-xkb-dev libx11-dev rofi
 ```
