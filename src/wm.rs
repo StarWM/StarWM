@@ -146,8 +146,18 @@ impl StarMan {
         self.workspace_mut().add(window);
         // Grab the events where the cursor leaves and enters the window
         self.grab_enter_leave(window);
-        // Focus on this window
-        self.focus_window(window);
+        // If in monocle, restore layer position
+        if let Some(monocle) = self.workspace().get_monocle() {
+            xcb::configure_window(
+                &self.conn,
+                monocle,
+                &[(xcb::CONFIG_WINDOW_STACK_MODE as u16, xcb::STACK_MODE_ABOVE)],
+            );
+            self.focus_window(monocle);
+        } else {
+            // Focus on this window
+            self.focus_window(window);
+        }
         // Give window a border
         self.border_unfocused(window);
         self.set_border_width(window, self.conf.unfocused_border.size);

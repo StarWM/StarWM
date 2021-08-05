@@ -1,7 +1,9 @@
 // Window.rs - Handles window arrangement and management
 use crate::key::Key;
 
-pub const BLACKLIST: [&str; 11] = [
+pub const BLACKLIST: [&str; 14] = [
+    "_NET_WM_WINDOW_TYPE_DESKTOP",
+    "_NET_WM_WINDOW_TYPE_COMBO",
     "_NET_WM_WINDOW_TYPE_MENU",
     "_NET_WM_WINDOW_TYPE_POPUP_MENU",
     "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
@@ -13,6 +15,7 @@ pub const BLACKLIST: [&str; 11] = [
     "_NET_WM_WINDOW_TYPE_DIALOG",
     "_NET_WM_WINDOW_TYPE_DOCK",
     "_NET_WM_WINDOW_TYPE_DND",
+    "WM_ZOOM_HINTS",
 ];
 
 // Workspace struct that holds information about a specific workspace
