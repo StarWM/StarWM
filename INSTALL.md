@@ -33,9 +33,13 @@ sudo cp target/release/starwm /usr/bin/starwm
 ```
 
 After following the above guide, you will have installed StarWM.
-If you wish to add it into a desktop manager, then you can't just yet.
+If you want to use graphical desktop managers, should copy the `starwm.dekstop` file to `/usr/share/xsessions/`. You will then see starwm in your desktops list:
 
-The best way to get it started is to add this:
+```sh
+sudo cp starwm.desktop /usr/share/xsessions/
+```
+
+Another way to get it started is to add this:
 
 ```sh
 exec starwm
